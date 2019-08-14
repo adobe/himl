@@ -72,3 +72,19 @@ examples/config_example
         │   └── cluster.yaml
         └── region.yaml
 ```
+
+### Using the python module
+
+```py
+from hierarchical_yaml import ConfigProcessor
+
+config_processor = ConfigProcessor()
+path = "examples/config_example/env=dev/region=us-east-1/cluster=cluster2"
+filters = () # can choose to output only specific keys
+exclude_keys = () # can choose to remove specific keys
+output_format = "yaml" # yaml/json
+
+
+config_processor.process(path=path, filters=filters, exclude_keys=exclude_keys, 
+                         output_format=output_format, print_data=True)
+```
