@@ -63,7 +63,7 @@ class ConfigProcessor(object):
         return data
 
     @staticmethod
-    def get_relative_path(self, path):
+    def get_relative_path(path):
         cwd = os.path.join(os.getcwd(), '')
         if path.startswith(cwd):
             return path[len(cwd):]
@@ -120,7 +120,7 @@ class ConfigGenerator(object):
     @staticmethod
     def yaml_get_content(yaml_file):
         with open(yaml_file, 'r') as f:
-            content = yaml.load(f)
+            content = yaml.load(f, Loader=yaml.FullLoader)
         return content if content else {}
 
     @staticmethod

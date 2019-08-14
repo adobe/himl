@@ -15,6 +15,9 @@ from .inject_secrets import SecretInjector
 def is_interpolation(value):
     return isinstance(value, (basestring)) and '{{' in value and '}}' in value
 
+def is_full_interpolation(value):
+    return is_interpolation(value) and value.startswith('{{') and value.endswith('}}')
+
 def remove_white_spaces(value):
     return re.sub(r"\s+", "", value)
 
@@ -81,8 +84,9 @@ class AbstractInterpolationResolver(DictIterator):
     def resolve_interpolation(self, line):
         if not is_interpolation(line):
             return line
-        interpolation = remove_white_spaces(line)
-        return self.do_resolve_interpolation(interpolation)
+        if is_full_interpolation(line):
+            line = remove_white_spaces(line)
+        return self.do_resolve_interpolation(line)
 
     def do_resolve_interpolation(self, line):
         pass
@@ -166,7 +170,7 @@ class FullBlobInjector:
         pass
 
     def resolve(self, line, data):
-        if not self.is_full_interpolation(line):
+        if not is_full_interpolation(line):
             return line
 
         keys = self.get_keys_from_interpolation(line)
@@ -177,10 +181,6 @@ class FullBlobInjector:
                 return line
 
         return data if data and not is_interpolation(data) else line
-
-    @staticmethod
-    def is_full_interpolation(value):
-        return is_interpolation(value) and value.startswith('{{') and value.endswith('}}')
 
     @staticmethod
     def get_keys_from_interpolation(line):

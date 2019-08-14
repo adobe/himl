@@ -6,6 +6,7 @@ def run(args=None):
     """ App entry point """
 
     parser = argparse.ArgumentParser()
+    parser.add_argument('path', type=str, help='The config directory')
     parser.add_argument('--output-file', dest='output_file', type=str,
                         help='output file location')
     parser.add_argument('--format', dest='output_format', type=str, default="yaml",
@@ -27,8 +28,9 @@ def run(args=None):
     cwd = opts.cwd if opts.cwd else os.getcwd()
     filters = opts.filter if opts.filter else ()
     excluded_keys = opts.exclude if opts.exclude else ()
+    print_data = True
 
     config_processor = ConfigProcessor()
     config_processor.process(cwd, opts.path, filters, excluded_keys, opts.enclosing_key, opts.output_format,
-                          print_data=True, opts.output_file, opts.skip_interpolation_resolving, 
+                          print_data, opts.output_file, opts.skip_interpolation_resolving, 
                           opts.skip_interpolation_validation)
