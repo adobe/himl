@@ -1,12 +1,23 @@
-from setuptools import setup
 from hierarchical_yaml.__version__ import __version__
+import os
+import sys
 
+try:
+    from setuptools import setup
+except ImportError:
+    from distutils.core import setup
+
+with open('README.md') as f:
+    _readme = f.read()
+
+_mydir = os.path.abspath(os.path.dirname(sys.argv[0]))
+_requires = [ r for r in open(os.path.sep.join((_mydir,'requirements.txt')), "r").read().split('\n') if len(r)>1 ]
 
 setup(
     name='hierarchical-yaml',
     version=__version__,
     description='A hierarchical config using yaml in Python',
-    long_description=__doc__,
+    long_description=_readme + '\n\n',
     long_description_content_type='text/markdown',
     url='https://github.com/adobe/hierarchical-yaml',
     author='Adobe',
@@ -35,13 +46,7 @@ setup(
     ],
     packages=['hierarchical_yaml'],
     include_package_data=True,
-    install_requires=[
-        'pathlib2',
-        'deepmerge',
-        'lru_cache',
-        'pyyaml',
-        'backports.functools_lru_cache',
-        'boto3'],
+    install_requires=_requires,
     entry_points={
         'console_scripts': [
             'hyaml = hierarchical_yaml.main:run'

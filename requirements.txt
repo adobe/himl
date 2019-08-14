@@ -1,7 +1,6 @@
-deepmerge==0.0.5
-lru_cache==0.2.3
-backports.functools_lru_cache==1.5
-pathlib2==2.3.4
-boto3==1.9.110
+deepmerge>=0.0.5
+lru_cache>=0.2.3
+backports.functools_lru_cache>=1.5
+pathlib2>=2.3.4
+boto3>=1.9.110
 pyyaml
-pytest
