@@ -16,7 +16,7 @@ import yaml
 import json
 from .interpolation import InterpolationResolver, InterpolationValidator
 from .remote_state import S3TerraformRemoteStateRetriever
-from .python_compat import iteritems
+from .python_compat import iteritems, primitive_types
 
 class ConfigProcessor(object):
 
@@ -139,7 +139,7 @@ class ConfigGenerator(object):
             if key in values and type(values[key]) != type(value):
                 raise Exception("Failed to merge key '{}', because of mismatch in type: {} vs {}"
                                 .format(key, type(values[key]), type(value)))
-            if key in values and not isinstance(value, (basestring, int, bool)):
+            if key in values and not isinstance(value, primitive_types):
                 values[key] = ConfigGenerator.merge_value(values[key], value)
             else:
                 values[key] = value

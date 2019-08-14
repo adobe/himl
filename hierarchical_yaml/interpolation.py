@@ -10,13 +10,16 @@
 
 import re
 from .inject_secrets import SecretInjector
+from .python_compat import iteritems, string_types, primitive_types
 
 
 def is_interpolation(value):
-    return isinstance(value, (basestring)) and '{{' in value and '}}' in value
+    return isinstance(value, string_types) and '{{' in value and '}}' in value
+
 
 def is_full_interpolation(value):
     return is_interpolation(value) and value.startswith('{{') and value.endswith('}}')
+
 
 def remove_white_spaces(value):
     return re.sub(r"\s+", "", value)
@@ -59,7 +62,7 @@ class DictIterator:
         pass
 
     def loop_all_items(self, data, process_func):
-        if isinstance(data, basestring):
+        if isinstance(data, string_types):
             return process_func(data)
         if isinstance(data, list):
             items = []
@@ -134,13 +137,13 @@ class FromDictInjector:
 
     def resolve(self, line, data):
         """
-        :param input: {{env.name}} 
+        :param line: {{env.name}}
         :param data: (env: name: dev)
         :return: dev
         """
 
         self.parse_leaves(data, "")
-        for key, value in self.results.iteritems():
+        for key, value in iteritems(self.results):
             placeholder = "{{" + key + "}}"
             if placeholder not in line:
                 continue
@@ -151,7 +154,7 @@ class FromDictInjector:
         return line
 
     def parse_leaves(self, data, partial_key):
-        if isinstance(data, (basestring, int, bool)):
+        if isinstance(data, primitive_types):
             self.results[partial_key] = data
             return
         if isinstance(data, dict):
