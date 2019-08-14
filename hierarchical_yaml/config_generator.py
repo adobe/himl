@@ -16,7 +16,8 @@ import yaml
 import json
 from .interpolation import InterpolationResolver, InterpolationValidator
 from .remote_state import S3TerraformRemoteStateRetriever
-from .python_compat import iteritems, primitive_types
+from .python_compat import iteritems, primitive_types, PY3
+
 
 class ConfigProcessor(object):
 
@@ -103,11 +104,10 @@ class ConfigGenerator(object):
         Dumper.add_representer(OrderedDict, dict_representer)
         Loader.add_constructor(_mapping_tag, dict_constructor)
 
-        Dumper.add_representer(str,
-                               SafeRepresenter.represent_str)
+        Dumper.add_representer(str, SafeRepresenter.represent_str)
 
-        Dumper.add_representer(unicode,
-                               SafeRepresenter.represent_unicode)
+        if not PY3:
+            Dumper.add_representer(unicode, SafeRepresenter.represent_unicode)
         return Dumper
 
     @staticmethod

@@ -12,6 +12,7 @@ import argparse
 import os
 from .config_generator import ConfigProcessor
 
+
 def run(args=None):
     """ App entry point """
 
@@ -32,7 +33,7 @@ def run(args=None):
     parser.add_argument('--enclosing-key', dest='enclosing_key', type=str,
                         help='enclose the generated data under a common key')
     parser.add_argument('--cwd', dest='cwd', type=str, default="",
-                            help='the working directory')
+                        help='the working directory')
 
     opts = parser.parse_args(args)
     cwd = opts.cwd if opts.cwd else os.getcwd()
@@ -42,5 +43,5 @@ def run(args=None):
 
     config_processor = ConfigProcessor()
     config_processor.process(cwd, opts.path, filters, excluded_keys, opts.enclosing_key, opts.output_format,
-                          print_data, opts.output_file, opts.skip_interpolation_resolving, 
-                          opts.skip_interpolation_validation)
+                             print_data, opts.output_file, opts.skip_interpolation_resolving,
+                             opts.skip_interpolation_validation)

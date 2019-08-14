@@ -24,6 +24,7 @@ def is_full_interpolation(value):
 def remove_white_spaces(value):
     return re.sub(r"\s+", "", value)
 
+
 class InterpolationResolver(object):
 
     def resolve_interpolations(self, data):
@@ -56,10 +57,7 @@ class InterpolationResolver(object):
         return SecretInjector(default_aws_profile)
 
 
-class DictIterator:
-
-    def __init__(self):
-        pass
+class DictIterator(object):
 
     def loop_all_items(self, data, process_func):
         if isinstance(data, string_types):
@@ -78,8 +76,6 @@ class DictIterator:
 
 
 class AbstractInterpolationResolver(DictIterator):
-    def __init__(self):
-        pass
 
     def resolve_interpolations(self, data):
         return self.loop_all_items(data, self.resolve_interpolation)
@@ -118,9 +114,6 @@ class SecretsInterpolationResolver(AbstractInterpolationResolver):
 
 class InterpolationValidator(DictIterator):
 
-    def __init__(self):
-        pass
-
     def check_all_interpolations_resolved(self, data):
         return self.loop_all_items(data, self.validate_value)
 
@@ -130,7 +123,7 @@ class InterpolationValidator(DictIterator):
         return value
 
 
-class FromDictInjector:
+class FromDictInjector(object):
 
     def __init__(self):
         self.results = {}
@@ -167,10 +160,7 @@ class FromDictInjector:
                 self.parse_leaves(value, new_key)
 
 
-class FullBlobInjector:
-
-    def __init__(self):
-        pass
+class FullBlobInjector(object):
 
     def resolve(self, line, data):
         if not is_full_interpolation(line):

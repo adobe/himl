@@ -14,6 +14,7 @@ try:
 except ImportError:
     from backports.functools_lru_cache import lru_cache
 
+
 class SecretInjector(object):
     """
     Resolve secrets in the form:
