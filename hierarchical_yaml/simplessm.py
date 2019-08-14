@@ -8,11 +8,10 @@
 #OF ANY KIND, either express or implied. See the License for the specific language
 #governing permissions and limitations under the License.
 
-#!/usr/bin/env python
-
 from botocore.exceptions import ClientError
 import boto3
 import os
+
 
 class SimpleSSM(object):
     def __init__(self, aws_profile, region_name):
