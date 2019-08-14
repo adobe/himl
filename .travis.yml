@@ -1,0 +1,27 @@
+language: python
+install: pip install -r requirements.txt
+script:
+  - pytest
+  - python setup.py sdist bdist_wheel
+
+branches:
+  only:
+  - master
+  - /\d+\.\d+\.\d+/
+
+deploy:
+  - provider: releases
+    api_key: '$GITHUB_API_KEY'
+    skip_cleanup: true
+    file_glob: true
+    file: "dist/**/*"
+    on:
+      tags: true
+
+deploy:
+  provider: pypi
+  user: test
+  password:
+    secure: TODO
+  distributions: sdist bdist_wheel
+  skip_existing: true
