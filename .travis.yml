@@ -18,10 +18,3 @@ deploy:
     on:
       tags: true
 
-deploy:
-  provider: pypi
-  user: test
-  password:
-    secure: TODO
-  distributions: sdist bdist_wheel
-  skip_existing: true
