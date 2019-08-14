@@ -1,12 +1,12 @@
-#Copyright 2019 Adobe. All rights reserved.
-#This file is licensed to you under the Apache License, Version 2.0 (the "License");
-#you may not use this file except in compliance with the License. You may obtain a copy
-#of the License at http://www.apache.org/licenses/LICENSE-2.0
+# Copyright 2019 Adobe. All rights reserved.
+# This file is licensed to you under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License. You may obtain a copy
+# of the License at http://www.apache.org/licenses/LICENSE-2.0
 
-#Unless required by applicable law or agreed to in writing, software distributed under
-#the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTATIONS
-#OF ANY KIND, either express or implied. See the License for the specific language
-#governing permissions and limitations under the License.
+# Unless required by applicable law or agreed to in writing, software distributed under
+# the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR REPRESENTATIONS
+# OF ANY KIND, either express or implied. See the License for the specific language
+# governing permissions and limitations under the License.
 
 import os
 from collections import OrderedDict
@@ -16,11 +16,12 @@ import yaml
 import json
 from .interpolation import InterpolationResolver, InterpolationValidator
 from .remote_state import S3TerraformRemoteStateRetriever
-
+from .python_compat import iteritems
 
 class ConfigProcessor(object):
 
-    def process(self, cwd=None, path=None, filters=(), exclude_keys=(), enclosing_key=None, output_format=yaml, print_data=False,
+    def process(self, cwd=None, path=None, filters=(), exclude_keys=(), enclosing_key=None, output_format=yaml,
+                print_data=False,
                 output_file=None, skip_interpolations=False, skip_interpolation_validation=False):
 
         path = self.get_relative_path(path)
@@ -94,7 +95,7 @@ class ConfigGenerator(object):
         _mapping_tag = yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG
 
         def dict_representer(dumper, data):
-            return dumper.represent_dict(data.iteritems())
+            return dumper.represent_dict(iteritems(data))
 
         def dict_constructor(loader, node):
             return OrderedDict(loader.construct_pairs(node))
@@ -134,10 +135,10 @@ class ConfigGenerator(object):
 
     @staticmethod
     def merge_yamls(values, yaml_content):
-        for key, value in yaml_content.iteritems():
+        for key, value in iteritems(yaml_content):
             if key in values and type(values[key]) != type(value):
                 raise Exception("Failed to merge key '{}', because of mismatch in type: {} vs {}"
-                    .format(key, type(values[key]), type(value)))
+                                .format(key, type(values[key]), type(value)))
             if key in values and not isinstance(value, (basestring, int, bool)):
                 values[key] = ConfigGenerator.merge_value(values[key], value)
             else:
