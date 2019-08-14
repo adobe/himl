@@ -1,4 +1,3 @@
-from hierarchical_yaml.__version__ import __version__
 import os
 import sys
 
@@ -15,7 +14,7 @@ _requires = [ r for r in open(os.path.sep.join((_mydir,'requirements.txt')), "r"
 
 setup(
     name='hierarchical-yaml',
-    version=__version__,
+    version="0.1.10",
     description='A hierarchical config using yaml in Python',
     long_description=_readme + '\n\n',
     long_description_content_type='text/markdown',
