@@ -1,0 +1,13 @@
+env: default
+region:
+  location: default
+
+cluster:
+  name: default # this will be overridden by the inner cluster.yaml file
+
+  # Interpolation example
+  description: "This is cluster: {{cluster.name}}. It is using {{cluster.node_type}} instance type."
+  node_type: c3.2xlarge # default value, which can be overridden by each cluster
+
+# Fetching the secret value at runtime, from a secrets store (in this case AWS SSM).
+passphrase: "{{ssm.path(/key/coming/from/aws/secrets/store/manager)}}"
