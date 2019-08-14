@@ -9,6 +9,7 @@
 # governing permissions and limitations under the License.
 
 from .secret_resolvers import AggregatedSecretResolver
+
 try:
     from functools import lru_cache
 except ImportError:

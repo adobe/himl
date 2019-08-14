@@ -9,6 +9,7 @@
 # governing permissions and limitations under the License.
 
 import re
+
 from .inject_secrets import SecretInjector
 from .python_compat import iteritems, string_types, primitive_types
 

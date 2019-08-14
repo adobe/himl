@@ -8,22 +8,23 @@
 # OF ANY KIND, either express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
 
+import json
 import os
 from collections import OrderedDict
+
 import pathlib2
-from deepmerge import Merger
 import yaml
-import json
+from deepmerge import Merger
+
 from .interpolation import InterpolationResolver, InterpolationValidator
-from .remote_state import S3TerraformRemoteStateRetriever
 from .python_compat import iteritems, primitive_types, PY3
+from .remote_state import S3TerraformRemoteStateRetriever
 
 
 class ConfigProcessor(object):
 
-    def process(self, cwd=None, path=None, filters=(), exclude_keys=(), enclosing_key=None, output_format=yaml,
-                print_data=False,
-                output_file=None, skip_interpolations=False, skip_interpolation_validation=False):
+    def process(self, cwd=None, path=None, filters=(), exclude_keys=(), enclosing_key=None, output_format="yaml",
+                print_data=False, output_file=None, skip_interpolations=False, skip_interpolation_validation=False):
 
         path = self.get_relative_path(path)
 
@@ -181,13 +182,13 @@ class ConfigGenerator(object):
     def yaml_to_json(self, yaml_data):
         return json.dumps(yaml.load(yaml_data), indent=4)
 
-    def output_data(self, data, format):
+    def output_data(self, data, output_format):
         yaml_data = self.output_yaml_data(data)
-        if "yaml" in format:
+        if "yaml" in output_format:
             return yaml_data
-        elif "json" in format:
+        elif "json" in output_format:
             return self.yaml_to_json(yaml_data)
-        raise Exception("Unknown output format: {}".format(format))
+        raise Exception("Unknown output format: {}".format(output_format))
 
     def add_enclosing_key(self, key):
         return {key: self.generated_data}

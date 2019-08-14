@@ -8,9 +8,10 @@
 # OF ANY KIND, either express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
 
-from botocore.exceptions import ClientError
-import boto3
 import os
+
+import boto3
+from botocore.exceptions import ClientError
 
 
 class SimpleSSM(object):
