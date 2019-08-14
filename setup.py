@@ -20,7 +20,7 @@ setup(
     long_description_content_type='text/markdown',
     url='https://github.com/adobe/hierarchical-yaml',
     author='Adobe',
-    author_email='',
+    author_email='noreply@adobe.com',
     python_requires=">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*",
     license='Apache2',
     classifiers=[
