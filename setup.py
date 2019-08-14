@@ -42,5 +42,9 @@ setup(
         'pyyaml',
         'backports.functools_lru_cache',
         'boto3'],
-    entry_points={}
+    entry_points={
+        'console_scripts': [
+            'hyaml = hierarchical_yaml.main:run'
+        ]
+    }
 )
