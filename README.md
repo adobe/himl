@@ -1,7 +1,7 @@
 # hierarchical-yaml
 A hierarchical config using yaml in Python
 
-Latest version is: 0.1.4
+Latest version is: 0.1.5
 
 
 ## Installation
