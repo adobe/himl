@@ -19,6 +19,9 @@ class ConfigRunner(object):
     def run(self, args):
         parser = self.get_parser()
         opts = parser.parse_args(args)
+        self.do_run(opts)
+
+    def do_run(self, opts):
         cwd = opts.cwd if opts.cwd else os.getcwd()
         filters = opts.filter if opts.filter else ()
         excluded_keys = opts.exclude if opts.exclude else ()
@@ -31,11 +34,15 @@ class ConfigRunner(object):
                                  opts.skip_interpolation_validation)
 
     @staticmethod
-    def get_parser():
-        parser = argparse.ArgumentParser()
-        parser.add_argument('path', type=str, help='The config directory')
+    def get_parser(parser=None):
+        if not parser:
+            parser = argparse.ArgumentParser()
+            parser.add_argument('path', type=str, help='The config directory')
+
         parser.add_argument('--output-file', dest='output_file', type=str,
                             help='output file location')
+        parser.add_argument('--print-data', action='store_true',
+                            help='print generated data on screen')
         parser.add_argument('--format', dest='output_format', type=str, default="yaml",
                             help='output file format')
         parser.add_argument('--filter', dest='filter', action='append',
