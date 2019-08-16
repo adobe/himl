@@ -1,0 +1,9 @@
+---
+env: default
+deep:
+  key1: v1
+  key2: v2
+deep_list:
+  - item1
+  - item2
+
