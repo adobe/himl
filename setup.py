@@ -14,7 +14,7 @@ _requires = [ r for r in open(os.path.sep.join((_mydir,'requirements.txt')), "r"
 
 setup(
     name='hierarchical-yaml',
-    version="0.1.13",
+    version="0.1.14",
     description='A hierarchical config using yaml in Python',
     long_description=_readme + '\n\n',
     long_description_content_type='text/markdown',
