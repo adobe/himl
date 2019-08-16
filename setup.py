@@ -13,12 +13,12 @@ _mydir = os.path.abspath(os.path.dirname(sys.argv[0]))
 _requires = [ r for r in open(os.path.sep.join((_mydir,'requirements.txt')), "r").read().split('\n') if len(r)>1 ]
 
 setup(
-    name='hierarchical-yaml',
+    name='himl',
     version="0.1.14",
-    description='A hierarchical config using yaml in Python',
+    description='A hierarchical config using yaml',
     long_description=_readme + '\n\n',
     long_description_content_type='text/markdown',
-    url='https://github.com/adobe/hierarchical-yaml',
+    url='https://github.com/adobe/himl',
     author='Adobe',
     author_email='noreply@adobe.com',
     python_requires=">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*",
@@ -43,12 +43,12 @@ setup(
         'Topic :: Software Development :: Libraries :: Python Modules',
         'Topic :: Text Processing :: Markup :: HTML'
     ],
-    packages=['hierarchical_yaml'],
+    packages=['himl'],
     include_package_data=True,
     install_requires=_requires,
     entry_points={
         'console_scripts': [
-            'hyaml = hierarchical_yaml.main:run'
+            'himl = himl.main:run'
         ]
     }
 )

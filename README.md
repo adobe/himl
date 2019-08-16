@@ -1,4 +1,4 @@
-# hierarchical-yaml
+# himl
 A hierarchical config using yaml in Python
 
 Latest version is: 0.1.14
@@ -9,14 +9,14 @@ Latest version is: 0.1.14
 ### Using `pip`
 
 ```sh
-pip install hierarchical-yaml
+pip install himl
 ```
 
 ### From Source
 
 ```
-git clone https://github.com/adobe/hierarchical-yaml
-cd hierarchical-yaml
+git clone https://github.com/adobe/himl
+cd himl
 sudo python setup.py install
 ```
 
@@ -25,7 +25,7 @@ sudo python setup.py install
 ### Using the cli
 
 ```sh
-usage: hyaml [-h] [--output-file OUTPUT_FILE] [--format OUTPUT_FORMAT]
+usage: himl [-h] [--output-file OUTPUT_FILE] [--format OUTPUT_FORMAT]
              [--filter FILTER] [--exclude EXCLUDE]
              [--skip-interpolation-validation]
              [--skip-interpolation-resolving] [--enclosing-key ENCLOSING_KEY]
@@ -34,7 +34,7 @@ usage: hyaml [-h] [--output-file OUTPUT_FILE] [--format OUTPUT_FORMAT]
 ```
 
 ```sh
-hyaml examples/config_example/env=dev/region=us-east-1/cluster=cluster2
+himl examples/config_example/env=dev/region=us-east-1/cluster=cluster2
 ```
 
 The configuration output will be something like this:
@@ -76,7 +76,7 @@ examples/config_example
 ### Using the python module
 
 ```py
-from hierarchical_yaml import ConfigProcessor
+from himl import ConfigProcessor
 
 config_processor = ConfigProcessor()
 path = "examples/config_example/env=dev/region=us-east-1/cluster=cluster2"
