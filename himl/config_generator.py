@@ -180,7 +180,7 @@ class ConfigGenerator(object):
         return yaml.dump(data, Dumper=ConfigGenerator.yaml_dumper(), default_flow_style=False)
 
     def yaml_to_json(self, yaml_data):
-        return json.dumps(yaml.load(yaml_data, indent=4, Loader=yaml.FullLoader))
+        return json.dumps(yaml.load(yaml_data, Loader=yaml.FullLoader), indent=4)
 
     def output_data(self, data, output_format):
         yaml_data = self.output_yaml_data(data)
