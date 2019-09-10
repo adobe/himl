@@ -168,13 +168,20 @@ class FullBlobInjector(object):
             return line
 
         keys = self.get_keys_from_interpolation(line)
+        resolved_value = self.get_inner_value(keys, data)
+        is_valid_value = resolved_value is not None and not is_interpolation(resolved_value)
+
+        return resolved_value if is_valid_value else line
+
+    @staticmethod
+    def get_inner_value(keys, data):
         for key in keys:
             if key in data:
                 data = data[key]
             else:
-                return line
+                return None
 
-        return data if data and not is_interpolation(data) else line
+        return data
 
     @staticmethod
     def get_keys_from_interpolation(line):
