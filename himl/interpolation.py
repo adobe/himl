@@ -50,13 +50,6 @@ class SecretResolver(object):
         secrets_injector = SecretsInterpolationResolver(self.get_secret_injector(data))
         secrets_injector.resolve_interpolations(data)
 
-        # Perform another resolving, in case some secrets are used as interpolations.
-        # Example:
-        # value1: "{{ssm.mysecret}}"
-        # value2: "something-{{value1}} <--- this will be resolved at this step
-        from_dict_injector = DictInterpolationResolver(data, FromDictInjector())
-        from_dict_injector.resolve_interpolations(data)
-
         return data
 
     def get_secret_injector(self, data):

@@ -43,6 +43,13 @@ class ConfigProcessor(object):
 
         if not skip_interpolations:
             generator.resolve_interpolations()
+            # Perform another resolving, in case some secrets are used as interpolations.
+            # Example:
+            # map1:
+            #    key1: value1
+            # map2: "{{map1.key1}}"
+            # value: "something-{{map2.key1}} <--- this will be resolved at this step
+            generator.resolve_interpolations()
             generator.add_dynamic_data()
             generator.resolve_interpolations()
 
@@ -54,6 +61,11 @@ class ConfigProcessor(object):
 
         if not skip_secrets:
             generator.resolve_secrets()
+            # Perform another resolving, in case some secrets are used as interpolations.
+            # Example:
+            # value1: "{{ssm.mysecret}}"
+            # value2: "something-{{value1}} <--- this will be resolved at this step
+            generator.resolve_interpolations()
 
         if not skip_interpolation_validation:
             generator.validate_interpolations()
