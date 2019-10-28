@@ -38,6 +38,12 @@ class InterpolationResolver(object):
         from_dict_injector = DictInterpolationResolver(data, FromDictInjector())
         from_dict_injector.resolve_interpolations(data)
 
+        return data
+
+
+class SecretResolver(object):
+
+    def resolve_secrets(self, data):
         # Resolve interpolations representing secrets
         # Example:
         # value1: "{{ssm.path(mysecret)}}"

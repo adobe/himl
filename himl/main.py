@@ -31,7 +31,7 @@ class ConfigRunner(object):
         config_processor = ConfigProcessor()
         config_processor.process(cwd, opts.path, filters, excluded_keys, opts.enclosing_key, opts.output_format,
                                  opts.print_data, opts.output_file, opts.skip_interpolation_resolving,
-                                 opts.skip_interpolation_validation)
+                                 opts.skip_interpolation_validation, opts.skip_secrets)
 
     @staticmethod
     def get_parser(parser=None):
@@ -51,6 +51,8 @@ class ConfigRunner(object):
                             help='exclude these keys from generated data')
         parser.add_argument('--skip-interpolation-validation', action='store_true',
                             help='will not throw an error if interpolations can not be resolved')
+        parser.add_argument('--skip-secrets', action='store_true',
+                            help='will not throw an error if secrets can not be resolved')
         parser.add_argument('--skip-interpolation-resolving', action='store_true',
                             help='do not perform any AWS calls to resolve interpolations')
         parser.add_argument('--enclosing-key', dest='enclosing_key', type=str,

@@ -16,7 +16,7 @@ import pathlib2
 import yaml
 from deepmerge import Merger
 
-from .interpolation import InterpolationResolver, InterpolationValidator
+from .interpolation import InterpolationResolver, InterpolationValidator, SecretResolver
 from .python_compat import iteritems, primitive_types, PY3
 from .remote_state import S3TerraformRemoteStateRetriever
 
@@ -24,11 +24,14 @@ from .remote_state import S3TerraformRemoteStateRetriever
 class ConfigProcessor(object):
 
     def process(self, cwd=None, path=None, filters=(), exclude_keys=(), enclosing_key=None, output_format="yaml",
-                print_data=False, output_file=None, skip_interpolations=False, skip_interpolation_validation=False):
+                print_data=False, output_file=None, skip_interpolations=False, skip_interpolation_validation=False, skip_secrets=False):
 
         path = self.get_relative_path(path)
 
         if skip_interpolations:
+            skip_interpolation_validation = True
+
+        elif skip_secrets:
             skip_interpolation_validation = True
 
         if cwd is None:
@@ -48,6 +51,9 @@ class ConfigProcessor(object):
 
         if len(exclude_keys) > 0:
             generator.exclude_keys(exclude_keys)
+
+        if not skip_secrets:
+            generator.resolve_secrets()
 
         if not skip_interpolation_validation:
             generator.validate_interpolations()
@@ -211,6 +217,10 @@ class ConfigGenerator(object):
     def resolve_interpolations(self):
         resolver = InterpolationResolver()
         self.generated_data = resolver.resolve_interpolations(self.generated_data)
+
+    def resolve_secrets(self):
+        resolver = SecretResolver()
+        self.generated_data = resolver.resolve_secrets(self.generated_data)
 
     def validate_interpolations(self):
         self.interpolation_validator.check_all_interpolations_resolved(self.generated_data)
