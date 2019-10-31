@@ -16,7 +16,7 @@ import pathlib2
 import yaml
 from deepmerge import Merger
 
-from .interpolation import InterpolationResolver, InterpolationValidator, SecretResolver
+from .interpolation import InterpolationResolver, InterpolationValidator, SecretResolver, DictIterator, replace_parent_working_directory
 from .python_compat import iteritems, primitive_types, PY3
 from .remote_state import S3TerraformRemoteStateRetriever
 
@@ -168,6 +168,15 @@ class ConfigGenerator(object):
             else:
                 values[key] = value
 
+    @staticmethod
+    def resolve_simple_interpolations(data, current_yaml_file):
+
+        directory = os.path.dirname(current_yaml_file)
+        directory = os.path.join(os.getcwd(), directory)
+
+        looper = DictIterator()
+        looper.loop_all_items(data, lambda value: replace_parent_working_directory(value, directory))
+
     def generate_hierarchy(self):
         """
         the method will go through the hierarchy of directories and create an ordered list of directories to be used
@@ -189,6 +198,7 @@ class ConfigGenerator(object):
             for yaml_file in yaml_files:
                 yaml_content = self.yaml_get_content(yaml_file)
                 self.merge_yamls(merged_values, yaml_content)
+                self.resolve_simple_interpolations(merged_values, yaml_file)
         self.generated_data = merged_values
 
     def get_values_from_dir_path(self):
