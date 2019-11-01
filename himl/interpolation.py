@@ -43,18 +43,15 @@ class InterpolationResolver(object):
 
 class SecretResolver(object):
 
-    def resolve_secrets(self, data):
+    def resolve_secrets(self, data, default_aws_profile):
         # Resolve interpolations representing secrets
         # Example:
         # value1: "{{ssm.path(mysecret)}}"
-        secrets_injector = SecretsInterpolationResolver(self.get_secret_injector(data))
-        secrets_injector.resolve_interpolations(data)
+        injector = SecretInjector(default_aws_profile)
+        secrets_resolver = SecretsInterpolationResolver(injector)
+        secrets_resolver.resolve_interpolations(data)
 
         return data
-
-    def get_secret_injector(self, data):
-        default_aws_profile = data['aws']['profile'] if 'aws' in data and 'profile' in data['aws'] else None
-        return SecretInjector(default_aws_profile)
 
 
 class DictIterator(object):

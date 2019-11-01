@@ -53,19 +53,20 @@ class ConfigProcessor(object):
             generator.add_dynamic_data()
             generator.resolve_interpolations()
 
-        if len(filters) > 0:
-            generator.filter_data(filters)
-
-        if len(exclude_keys) > 0:
-            generator.exclude_keys(exclude_keys)
-
         if not skip_secrets:
-            generator.resolve_secrets()
+            default_aws_profile = self.get_default_aws_profile(generator.generated_data)
+            generator.resolve_secrets(default_aws_profile)
             # Perform another resolving, in case some secrets are used as interpolations.
             # Example:
             # value1: "{{ssm.mysecret}}"
             # value2: "something-{{value1}} <--- this will be resolved at this step
             generator.resolve_interpolations()
+
+        if len(filters) > 0:
+            generator.filter_data(filters)
+
+        if len(exclude_keys) > 0:
+            generator.exclude_keys(exclude_keys)
 
         if not skip_interpolation_validation:
             generator.validate_interpolations()
@@ -82,6 +83,10 @@ class ConfigProcessor(object):
                 f.write(formatted_data)
 
         return data
+
+    @staticmethod
+    def get_default_aws_profile(data):
+        return data['aws']['profile'] if 'aws' in data and 'profile' in data['aws'] else None
 
     @staticmethod
     def get_relative_path(path):
@@ -230,9 +235,9 @@ class ConfigGenerator(object):
         resolver = InterpolationResolver()
         self.generated_data = resolver.resolve_interpolations(self.generated_data)
 
-    def resolve_secrets(self):
+    def resolve_secrets(self, default_aws_profile):
         resolver = SecretResolver()
-        self.generated_data = resolver.resolve_secrets(self.generated_data)
+        self.generated_data = resolver.resolve_secrets(self.generated_data, default_aws_profile)
 
     def validate_interpolations(self):
         self.interpolation_validator.check_all_interpolations_resolved(self.generated_data)
