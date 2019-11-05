@@ -25,6 +25,10 @@ def is_full_interpolation(value):
 def remove_white_spaces(value):
     return re.sub(r"\s+", "", value)
 
+def replace_parent_working_directory(value, cwd):
+    if "{{cwd}}" in value:
+        return value.replace("{{cwd}}", cwd)
+    return value
 
 class InterpolationResolver(object):
 

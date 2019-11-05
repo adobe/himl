@@ -1,2 +1,4 @@
 cluster:
   name: ireland1
+
+file: "{{cwd}}/test.txt"
