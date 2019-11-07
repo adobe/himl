@@ -8,7 +8,9 @@
 # OF ANY KIND, either express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
 
+import logging
 from .simplessm import SimpleSSM
+from .simples3 import SimpleS3
 
 
 class SecretResolver:
@@ -17,6 +19,11 @@ class SecretResolver:
 
     def resolve(self, secret_type, secret_params):
         return None
+
+    def get_param_or_exception(self, key, params):
+        if key not in params:
+            raise Exception("Could not find required key '{}' in the secret params: {}".format(key, params))
+        return params[key]
 
 
 class SSMSecretResolver(SecretResolver):
@@ -29,17 +36,33 @@ class SSMSecretResolver(SecretResolver):
     def resolve(self, secret_type, secret_params):
         aws_profile = secret_params.get("aws_profile", self.default_aws_profile)
         if not aws_profile:
-            raise Exception("Could not find the aws_profile in the secret params: {}".format(secret_params))
+            raise Exception("Could not find the aws_profile in the secret params for SSM secret: {}".format(secret_params))
 
         path = self.get_param_or_exception("path", secret_params)
         region_name = secret_params.get("region_name", "us-east-1")
         ssm = SimpleSSM(aws_profile, region_name)
         return ssm.get(path)
 
-    def get_param_or_exception(self, key, params):
-        if key not in params:
-            raise Exception("Could not find required key '{}' in the secret params: {}".format(key, params))
-        return params[key]
+
+class S3SecretResolver(SecretResolver):
+    def __init__(self, default_aws_profile=None):
+        self.default_aws_profile = default_aws_profile
+
+    def supports(self, secret_type):
+        return secret_type == "s3"
+
+    def resolve(self, secret_type, secret_params):
+        aws_profile = secret_params.get("aws_profile", self.default_aws_profile)
+        if not aws_profile:
+            raise Exception("Could not find the aws_profile in the secret params for S3 secret: {}".format(secret_params))
+
+        bucket = self.get_param_or_exception("bucket", secret_params)
+        path = self.get_param_or_exception("path", secret_params)
+        region_name = secret_params.get("region_name", "us-east-1")
+        base64Encode = secret_params.get("base64encode", False)
+        base64Encode = base64Encode == 'true'
+        s3 = SimpleS3(aws_profile, region_name)
+        return s3.get(bucket, path, base64Encode)
 
 
 # TODO - vault resolver
@@ -54,7 +77,7 @@ class VaultSecretResolver(SecretResolver):
 class AggregatedSecretResolver(SecretResolver):
 
     def __init__(self, default_aws_profile=None):
-        self.secret_resolvers = (SSMSecretResolver(default_aws_profile), VaultSecretResolver())
+        self.secret_resolvers = (SSMSecretResolver(default_aws_profile), S3SecretResolver(default_aws_profile), VaultSecretResolver())
 
     def supports(self, secret_type):
         return any([resolver.supports(secret_type) for resolver in self.secret_resolvers])

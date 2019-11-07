@@ -8,6 +8,7 @@
 # OF ANY KIND, either express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
 
+import re
 from .secret_resolvers import AggregatedSecretResolver
 
 try:
@@ -43,7 +44,7 @@ class SecretInjector(object):
         updated_line = line[2:-2]
 
         # parse each key/value (eg. path=my_pwd)
-        parts = updated_line.split('.')
+        parts = self.split_dot_not_within_parentheses(updated_line)
         if len(parts) <= 1:
             return line
 
@@ -62,3 +63,12 @@ class SecretInjector(object):
             return self.resolver.resolve(secret_type, secret_params)
         else:
             return line
+
+    def split_dot_not_within_parentheses(self, line):
+        """
+        s3.bucket(my-bucket).path(path/to/file.txt).aws_profile(myprofile)
+        will result in:
+        ['s3', 'bucket(my-bucket)', 'path(path/to/file.txt)']
+        """
+        pattern = r'\.\s*(?![^()]*\))'
+        return re.split(pattern, line)

@@ -225,6 +225,12 @@ See an example [here](https://github.com/adobe/himl#deep-merge-example).
 passphrase: "{{ssm.path(/key/coming/from/aws/secrets/store/manager).aws_profile(myprofile)}}"
 ```
 
+#### [AWS S3](https://aws.amazon.com/s3/)
+
+```yaml
+my_value: "{{s3.bucket(my-bucket).path(path/to/file.txt).base64encode(true).aws_profile(myprofile)}}"
+```
+
 #### [Vault](https://www.vaultproject.io/)
 
 Not yet implemented.
