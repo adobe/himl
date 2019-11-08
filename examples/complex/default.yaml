@@ -11,3 +11,6 @@ cluster:
 
 # Fetching the secret value at runtime, from a secrets store (in this case AWS SSM).
 # passphrase: "{{ssm.path(/key/coming/from/aws/secrets/store/manager).aws_profile(myprofile)}}"
+
+# Fetching the value at runtime from S3
+# my_secret: "{{s3.bucket(my-bucket).path(path/to/file.txt).base64encode(true).aws_profile(myprofile)}}"

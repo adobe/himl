@@ -8,11 +8,13 @@
 # OF ANY KIND, either express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
 
-import os
-
 import boto3
+import logging
+import os
 from botocore.exceptions import ClientError
 
+
+logger = logging.getLogger(__name__)
 
 class SimpleSSM(object):
     def __init__(self, aws_profile, region_name):
@@ -23,6 +25,7 @@ class SimpleSSM(object):
     def get(self, key):
         client = self.get_ssm_client()
         try:
+            logger.info("Resolving SSM secret for key '%s' on profile %s in region %s", key, self.aws_profile, self.region_name)
             return client.get_parameter(Name=key, WithDecryption=True).get("Parameter").get("Value")
         except ClientError as e:
             raise Exception(
