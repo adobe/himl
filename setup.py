@@ -6,7 +6,7 @@ try:
 except ImportError:
     from distutils.core import setup
 
-with open('README.md') as f:
+with open('README.md', encoding="utf-8") as f:
     _readme = f.read()
 
 _mydir = os.path.abspath(os.path.dirname(sys.argv[0]))
