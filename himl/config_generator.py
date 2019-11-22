@@ -11,6 +11,7 @@
 import json
 import os
 from collections import OrderedDict
+import logging
 
 import pathlib2
 import yaml
@@ -20,6 +21,7 @@ from .interpolation import InterpolationResolver, InterpolationValidator, Secret
 from .python_compat import iteritems, primitive_types, PY3
 from .remote_state import S3TerraformRemoteStateRetriever
 
+logger = logging.getLogger(__name__)
 
 class ConfigProcessor(object):
 
@@ -40,6 +42,9 @@ class ConfigProcessor(object):
         generator = ConfigGenerator(cwd, path)
         generator.generate_hierarchy()
         generator.process_hierarchy()
+
+        if len(exclude_keys) > 0:
+           generator.exclude_keys(exclude_keys)
 
         if not skip_interpolations:
             generator.resolve_interpolations()
@@ -64,9 +69,6 @@ class ConfigProcessor(object):
 
         if len(filters) > 0:
             generator.filter_data(filters)
-
-        if len(exclude_keys) > 0:
-            generator.exclude_keys(exclude_keys)
 
         if not skip_interpolation_validation:
             generator.validate_interpolations()
@@ -232,7 +234,11 @@ class ConfigGenerator(object):
     def exclude_keys(self, keys):
         for key in keys:
             if key in self.generated_data:
-                del self.generated_data[key]
+                try:
+                    logger.info("Excluding key %s", key)
+                    del self.generated_data[key]
+                except KeyNotFound:
+                    logger.info("Excluded key %s not found or already removed", key)
 
     def add_dynamic_data(self):
         remote_state_retriever = S3TerraformRemoteStateRetriever()
