@@ -1,7 +1,7 @@
 # himl
 A hierarchical config using yaml in Python.
 
-Latest version is: 0.5.1
+Latest version is: 0.5.2
 
 ## Description
 
