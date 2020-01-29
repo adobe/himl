@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 class ConfigProcessor(object):
 
-    def process(self, cwd=None, path=None, filters=(), exclude_keys=(), enclosing_key=None, output_format="yaml",
+    def process(self, cwd=None, path=None, filters=(), exclude_keys=(), enclosing_key=None, remove_enclosing_key=None, output_format="yaml",
                 print_data=False, output_file=None, skip_interpolations=False, skip_interpolation_validation=False, skip_secrets=False):
 
         path = self.get_relative_path(path)
@@ -73,7 +73,14 @@ class ConfigProcessor(object):
         if not skip_interpolation_validation:
             generator.validate_interpolations()
 
-        data = generator.add_enclosing_key(enclosing_key) if enclosing_key else generator.generated_data
+        if enclosing_key:
+            logger.info("Adding enclosing key {}".format(enclosing_key))
+            data = generator.add_enclosing_key(enclosing_key)
+        elif remove_enclosing_key:
+            logger.info("Removing enclosing key {}".format(remove_enclosing_key))
+            data = generator.remove_enclosing_key(remove_enclosing_key)
+        else:
+            data = generator.generated_data
 
         formatted_data = generator.output_data(data, output_format)
 
@@ -227,6 +234,9 @@ class ConfigGenerator(object):
 
     def add_enclosing_key(self, key):
         return {key: self.generated_data}
+
+    def remove_enclosing_key(self, key):
+        return self.generated_data[key]
 
     def filter_data(self, keys):
         self.generated_data = {key: self.generated_data[key] for key in keys if key in self.generated_data}

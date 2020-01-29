@@ -29,8 +29,8 @@ class ConfigRunner(object):
             opts.print_data = True
 
         config_processor = ConfigProcessor()
-        config_processor.process(cwd, opts.path, filters, excluded_keys, opts.enclosing_key, opts.output_format,
-                                 opts.print_data, opts.output_file, opts.skip_interpolation_resolving,
+        config_processor.process(cwd, opts.path, filters, excluded_keys, opts.enclosing_key, opts.remove_enclosing_key,
+                                 opts.output_format, opts.print_data, opts.output_file, opts.skip_interpolation_resolving,
                                  opts.skip_interpolation_validation, opts.skip_secrets)
 
     @staticmethod
@@ -57,6 +57,8 @@ class ConfigRunner(object):
                             help='do not perform any AWS calls to resolve interpolations')
         parser.add_argument('--enclosing-key', dest='enclosing_key', type=str,
                             help='enclose the generated data under a common key')
+        parser.add_argument('--remove-enclosing-key', dest='remove_enclosing_key', type=str,
+                            help='remove enclosed data from under a common key')
         parser.add_argument('--cwd', dest='cwd', type=str, default="",
                             help='the working directory')
         return parser
