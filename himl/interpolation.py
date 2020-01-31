@@ -25,10 +25,12 @@ def is_full_interpolation(value):
 def remove_white_spaces(value):
     return re.sub(r"\s+", "", value)
 
+
 def replace_parent_working_directory(value, cwd):
     if "{{cwd}}" in value:
         return value.replace("{{cwd}}", cwd)
     return value
+
 
 class InterpolationResolver(object):
 
@@ -66,7 +68,10 @@ class DictIterator(object):
         if isinstance(data, list):
             items = []
             for item in data:
-                items.append(self.loop_all_items(item, process_func))
+                if isinstance(item, list):
+                    items = items + item
+                else:
+                    items.append(self.loop_all_items(item, process_func))
             return items
         if isinstance(data, dict):
             for key in data:
