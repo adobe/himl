@@ -69,7 +69,7 @@ class DictIterator(object):
             items = []
             for item in data:
                 if isinstance(item, list):
-                    items = items + item
+                    items.extend(item)
                 else:
                     items.append(self.loop_all_items(item, process_func))
             return items
