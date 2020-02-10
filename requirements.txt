@@ -4,3 +4,5 @@ backports.functools_lru_cache>=1.5
 pathlib2>=2.3.4
 boto3>=1.9.110
 pyyaml>=5.1
+botocore>=1.12
+hvac>=0.9.3
