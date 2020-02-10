@@ -11,6 +11,7 @@
 import logging
 from .simplessm import SimpleSSM
 from .simples3 import SimpleS3
+from .simplevault import SimpleVault
 
 
 class SecretResolver:
@@ -65,17 +66,18 @@ class S3SecretResolver(SecretResolver):
         return s3.get(bucket, path, base64Encode)
 
 
-# TODO - vault resolver
 class VaultSecretResolver(SecretResolver):
     def supports(self, secret_type):
-        return False
+        return secret_type == "vault"
 
     def resolve(self, secret_type, secret_params):
-        return None
+        # Generate a token for a policy
+        policy = self.get_param_or_exception("token_policy", secret_params)
+        vault = SimpleVault
+        return vault().get_token(policy)
 
 
 class AggregatedSecretResolver(SecretResolver):
-
     def __init__(self, default_aws_profile=None):
         self.secret_resolvers = (SSMSecretResolver(default_aws_profile), S3SecretResolver(default_aws_profile), VaultSecretResolver())
 
