@@ -34,11 +34,13 @@ class SimpleSSM(object):
             self.release_ssm_client()
 
     def get_ssm_client(self):
-        os.environ['AWS_PROFILE'] = self.aws_profile
+        if self.aws_profile:
+            os.environ['AWS_PROFILE'] = self.aws_profile
         return boto3.client('ssm', region_name=self.region_name)
 
     def release_ssm_client(self):
         if self.initial_aws_profile is None:
-            del os.environ['AWS_PROFILE']
+            if self.aws_profile:
+                del os.environ['AWS_PROFILE']
         else:
             os.environ['AWS_PROFILE'] = self.initial_aws_profile

@@ -36,9 +36,7 @@ class SSMSecretResolver(SecretResolver):
 
     def resolve(self, secret_type, secret_params):
         aws_profile = secret_params.get("aws_profile", self.default_aws_profile)
-        if not aws_profile:
-            raise Exception("Could not find the aws_profile in the secret params for SSM secret: {}".format(secret_params))
-
+        
         path = self.get_param_or_exception("path", secret_params)
         region_name = secret_params.get("region_name", "us-east-1")
         ssm = SimpleSSM(aws_profile, region_name)
