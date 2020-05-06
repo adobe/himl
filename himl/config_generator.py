@@ -139,6 +139,8 @@ class ConfigGenerator(object):
 
         Dumper.add_representer(str, SafeRepresenter.represent_str)
 
+        yaml.representer.BaseRepresenter.represent_scalar = ConfigGenerator.custom_represent_scalar
+
         if not PY3:
             Dumper.add_representer(unicode, SafeRepresenter.represent_unicode)
         return Dumper
@@ -267,3 +269,27 @@ class ConfigGenerator(object):
 
     def validate_interpolations(self):
         self.interpolation_validator.check_all_interpolations_resolved(self.generated_data)
+
+    @staticmethod
+    def should_use_block(value):
+        """
+        https://stackoverflow.com/questions/8640959/how-can-i-control-what-scalar-form-pyyaml-uses-for-my-data
+        """
+
+        for c in u"\u000a\u000d\u001c\u001d\u001e\u0085\u2028\u2029":
+            if c in value:
+                return True
+        return False
+
+    @staticmethod
+    def custom_represent_scalar(self, tag, value, style=None):
+        if style is None:
+            if ConfigGenerator.should_use_block(value):
+                style = '|'
+            else:
+                style = self.default_style
+
+        node = yaml.representer.ScalarNode(tag, value, style=style)
+        if self.alias_key is not None:
+            self.represented_objects[self.alias_key] = node
+        return node
