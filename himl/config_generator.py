@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 class ConfigProcessor(object):
 
     def process(self, cwd=None, path=None, filters=(), exclude_keys=(), enclosing_key=None, remove_enclosing_key=None, output_format="yaml",
-                print_data=False, output_file=None, skip_interpolations=False, skip_interpolation_validation=False, skip_secrets=False):
+                print_data=False, output_file=None, skip_interpolations=False, skip_interpolation_validation=False, skip_secrets=False, multi_line_string=False):
 
         path = self.get_relative_path(path)
 
@@ -39,7 +39,7 @@ class ConfigProcessor(object):
         if cwd is None:
             cwd = os.getcwd()
 
-        generator = ConfigGenerator(cwd, path)
+        generator = ConfigGenerator(cwd, path, multi_line_string)
         generator.generate_hierarchy()
         generator.process_hierarchy()
 
@@ -112,12 +112,15 @@ class ConfigGenerator(object):
     will contain merged data on each layer.
     """
 
-    def __init__(self, cwd, path):
+    def __init__(self, cwd, path, multi_line_string):
         self.cwd = cwd
         self.path = path
         self.hierarchy = self.generate_hierarchy()
         self.generated_data = OrderedDict()
         self.interpolation_validator = InterpolationValidator()
+
+        if multi_line_string is True:
+            yaml.representer.BaseRepresenter.represent_scalar = ConfigGenerator.custom_represent_scalar
 
     @staticmethod
     def yaml_dumper():
@@ -138,8 +141,6 @@ class ConfigGenerator(object):
         Loader.add_constructor(_mapping_tag, dict_constructor)
 
         Dumper.add_representer(str, SafeRepresenter.represent_str)
-
-        yaml.representer.BaseRepresenter.represent_scalar = ConfigGenerator.custom_represent_scalar
 
         if not PY3:
             Dumper.add_representer(unicode, SafeRepresenter.represent_unicode)

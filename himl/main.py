@@ -31,7 +31,7 @@ class ConfigRunner(object):
         config_processor = ConfigProcessor()
         config_processor.process(cwd, opts.path, filters, excluded_keys, opts.enclosing_key, opts.remove_enclosing_key,
                                  opts.output_format, opts.print_data, opts.output_file, opts.skip_interpolation_resolving,
-                                 opts.skip_interpolation_validation, opts.skip_secrets)
+                                 opts.skip_interpolation_validation, opts.skip_secrets, opts.multi_line_string)
 
     @staticmethod
     def get_parser(parser=None):
@@ -61,6 +61,8 @@ class ConfigRunner(object):
                             help='remove enclosed data from under a common key')
         parser.add_argument('--cwd', dest='cwd', type=str, default="",
                             help='the working directory')
+        parser.add_argument('--multi-line-string', action='store_true',
+                            help='will overwrite the global yaml dumper to use block style')
         return parser
 
 
