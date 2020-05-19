@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 class ConfigProcessor(object):
 
     def process(self, cwd=None, path=None, filters=(), exclude_keys=(), enclosing_key=None, remove_enclosing_key=None, output_format="yaml",
-                print_data=False, output_file=None, skip_interpolations=False, skip_interpolation_validation=False, skip_secrets=False):
+                print_data=False, output_file=None, skip_interpolations=False, skip_interpolation_validation=False, skip_secrets=False, multi_line_string=False):
 
         path = self.get_relative_path(path)
 
@@ -39,7 +39,7 @@ class ConfigProcessor(object):
         if cwd is None:
             cwd = os.getcwd()
 
-        generator = ConfigGenerator(cwd, path)
+        generator = ConfigGenerator(cwd, path, multi_line_string)
         generator.generate_hierarchy()
         generator.process_hierarchy()
 
@@ -112,12 +112,15 @@ class ConfigGenerator(object):
     will contain merged data on each layer.
     """
 
-    def __init__(self, cwd, path):
+    def __init__(self, cwd, path, multi_line_string):
         self.cwd = cwd
         self.path = path
         self.hierarchy = self.generate_hierarchy()
         self.generated_data = OrderedDict()
         self.interpolation_validator = InterpolationValidator()
+
+        if multi_line_string is True:
+            yaml.representer.BaseRepresenter.represent_scalar = ConfigGenerator.custom_represent_scalar
 
     @staticmethod
     def yaml_dumper():
@@ -267,3 +270,27 @@ class ConfigGenerator(object):
 
     def validate_interpolations(self):
         self.interpolation_validator.check_all_interpolations_resolved(self.generated_data)
+
+    @staticmethod
+    def should_use_block(value):
+        """
+        https://stackoverflow.com/questions/8640959/how-can-i-control-what-scalar-form-pyyaml-uses-for-my-data
+        """
+
+        for c in u"\u000a\u000d\u001c\u001d\u001e\u0085\u2028\u2029":
+            if c in value:
+                return True
+        return False
+
+    @staticmethod
+    def custom_represent_scalar(self, tag, value, style=None):
+        if style is None:
+            if ConfigGenerator.should_use_block(value):
+                style = '|'
+            else:
+                style = self.default_style
+
+        node = yaml.representer.ScalarNode(tag, value, style=style)
+        if self.alias_key is not None:
+            self.represented_objects[self.alias_key] = node
+        return node
