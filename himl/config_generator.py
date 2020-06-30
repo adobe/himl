@@ -197,11 +197,11 @@ class ConfigGenerator(object):
         """
         hierarchy = []
         full_path = pathlib2.Path(self.path)
+        os.chdir(self.cwd)
         for path in full_path.parts:
             os.chdir(path)
             new_path = os.path.relpath(os.getcwd(), self.cwd)
             hierarchy.append(self.get_yaml_from_path(new_path, os.getcwd()))
-        os.chdir(self.cwd)
         return hierarchy
 
     def process_hierarchy(self):
