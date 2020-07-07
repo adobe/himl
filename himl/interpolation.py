@@ -15,7 +15,8 @@ from .python_compat import iteritems, string_types, primitive_types
 
 
 def is_interpolation(value):
-    return isinstance(value, string_types) and '{{' in value and '}}' in value
+    return isinstance(value, string_types) and '{{' in value and '}}' in value \
+                                           and '{{`' not in value and '`}}' not in value
 
 
 def is_full_interpolation(value):
