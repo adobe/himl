@@ -15,11 +15,21 @@ from .python_compat import iteritems, string_types, primitive_types
 
 
 def is_interpolation(value):
-    return isinstance(value, string_types) and '{{' in value and '}}' in value
+    return isinstance(value, string_types) and '{{' in value and '}}' in value \
+           and not is_escaped_interpolation(value)
+
+
+def is_escaped_interpolation(value):
+    return isinstance(value, string_types) and '{{`' in value and '`}}' in value
+
+
+def is_fully_escaped_interpolation(value):
+    return isinstance(value, string_types) and value.startswith('{{`') and value.endswith('`}}')
 
 
 def is_full_interpolation(value):
-    return is_interpolation(value) and value.startswith('{{') and value.endswith('}}')
+    return is_interpolation(value) and value.startswith('{{') and value.endswith('}}') \
+           and not is_fully_escaped_interpolation(value)
 
 
 def remove_white_spaces(value):
@@ -43,6 +53,19 @@ class InterpolationResolver(object):
         #   profile: "{{my_profile}}"
         from_dict_injector = DictInterpolationResolver(data, FromDictInjector())
         from_dict_injector.resolve_interpolations(data)
+
+        return data
+
+
+class EscapingResolver(object):
+
+    def resolve_escaping(self, data):
+        """
+        Should do one last check through all values to ensure the ones that were escaped are cleaned of the escape
+        sequence
+        """
+        from_dict_injector = DictEscapingResolver(data, FromDictInjector())
+        from_dict_injector.clean_escapes(data)
 
         return data
 
@@ -81,6 +104,21 @@ class DictIterator(object):
         return data
 
 
+class AbstractEscapingResolver(DictIterator):
+
+    def clean_escapes(self, data):
+        return self.loop_all_items(data, self.clean_escape)
+
+    def clean_escape(self, line):
+        # Check if line is escaped
+        if not is_escaped_interpolation(line):
+            return line
+        return self.do_clean_escapes(line)
+
+    def do_clean_escapes(self, line):
+        pass
+
+
 class AbstractInterpolationResolver(DictIterator):
 
     def resolve_interpolations(self, data):
@@ -95,6 +133,18 @@ class AbstractInterpolationResolver(DictIterator):
 
     def do_resolve_interpolation(self, line):
         pass
+
+
+class DictEscapingResolver(AbstractEscapingResolver):
+    def __init__(self, data, from_dict_injector):
+        AbstractEscapingResolver.__init__(self)
+        self.data = data
+        self.from_dict_injector = from_dict_injector
+        self.full_blob_injector = FullBlobInjector()
+
+    def do_clean_escapes(self, line):
+        updated_line = self.from_dict_injector.resolve(line, self.data)
+        return self.full_blob_injector.clean(updated_line)
 
 
 class DictInterpolationResolver(AbstractInterpolationResolver):
@@ -178,6 +228,27 @@ class FullBlobInjector(object):
 
         return resolved_value if is_valid_value else line
 
+    def clean(self, line):
+        # {{` something {{ value }} `}}
+        if is_fully_escaped_interpolation(line):
+            resolved_value = self.get_value_from_escaping(line)
+            is_valid_value = resolved_value is not None
+
+            return resolved_value if is_valid_value else line
+
+        # before {{` {{value}} `}} after
+        elif is_escaped_interpolation(line):
+            prefix = line[0:line.find('{{`')]
+            escaping_string = line[line.find('{{`'):line.find('`}}') + 3]
+            suffix = line[line.find('`}}') + 3:len(line)]
+            resolved_value = prefix + self.get_value_from_escaping(escaping_string) + suffix
+            is_valid_value = resolved_value is not None
+
+            return resolved_value if is_valid_value else line
+
+        # nothing to clean
+        return line
+
     @staticmethod
     def get_inner_value(keys, data):
         for key in keys:
@@ -194,3 +265,11 @@ class FullBlobInjector(object):
         line = line[2:-2]
 
         return line.split('.')
+
+    @staticmethod
+    def get_value_from_escaping(line):
+        # remove {{` and `}}
+        line = line[3:-3]
+
+        return line
+
