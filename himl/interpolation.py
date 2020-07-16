@@ -251,7 +251,7 @@ class FullBlobInjector(object):
 
     @staticmethod
     def get_value_from_escaping(line):
-        # remove {{ and }}
+        # remove {{` and `}}
         line = line[3:-3]
 
         return line
