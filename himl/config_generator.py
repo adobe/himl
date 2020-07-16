@@ -17,11 +17,12 @@ import pathlib2
 import yaml
 from deepmerge import Merger
 
-from .interpolation import InterpolationResolver, InterpolationValidator, SecretResolver, DictIterator, replace_parent_working_directory
+from .interpolation import InterpolationResolver, EscapingResolver, InterpolationValidator, SecretResolver, DictIterator, replace_parent_working_directory
 from .python_compat import iteritems, primitive_types, PY3
 from .remote_state import S3TerraformRemoteStateRetriever
 
 logger = logging.getLogger(__name__)
+
 
 class ConfigProcessor(object):
 
@@ -81,6 +82,8 @@ class ConfigProcessor(object):
             data = generator.remove_enclosing_key(remove_enclosing_key)
         else:
             data = generator.generated_data
+
+        generator.clean_escape_characters()
 
         formatted_data = generator.output_data(data, output_format)
 
@@ -270,6 +273,13 @@ class ConfigGenerator(object):
 
     def validate_interpolations(self):
         self.interpolation_validator.check_all_interpolations_resolved(self.generated_data)
+
+    def clean_escape_characters(self):
+        """
+        Method should clean the escaping characters {{` and `}} from all escaped values
+        """
+        resolver = EscapingResolver()
+        self.generated_data = resolver.resolve_escaping(self.generated_data)
 
     @staticmethod
     def should_use_block(value):
