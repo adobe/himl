@@ -16,7 +16,7 @@ from .python_compat import iteritems, string_types, primitive_types
 
 def is_interpolation(value):
     return isinstance(value, string_types) and '{{' in value and '}}' in value \
-                                           and not is_escaped_interpolation(value)
+           and not is_escaped_interpolation(value)
 
 
 def is_escaped_interpolation(value):
