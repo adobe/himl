@@ -252,3 +252,66 @@ remote_states:
 
 endpoint: "{{outputs.cluster_composition.output.value.redis_endpoint}}"
 ```
+
+
+## himl config merger
+
+The `himl-config-merger` script, contains logic of merging a hierarchical config directory and creating the end result YAML files.
+
+```sh
+himl-config-merger examples/complex --output-dir merged_output --levels env region cluster --leaf-directories cluster
+```
+
+```
+INFO:__main__:Found input config directory: examples/complex/env=prod/region=eu-west-2/cluster=ireland1
+INFO:__main__:Storing generated config to: merged_output/prod/eu-west-2/ireland1.yaml
+INFO:__main__:Found input config directory: examples/complex/env=dev/region=us-west-2/cluster=cluster1
+INFO:__main__:Storing generated config to: merged_output/dev/us-west-2/cluster1.yaml
+INFO:__main__:Found input config directory: examples/complex/env=dev/region=us-east-1/cluster=cluster1
+INFO:__main__:Storing generated config to: merged_output/dev/us-east-1/cluster1.yaml
+INFO:__main__:Found input config directory: examples/complex/env=dev/region=us-east-1/cluster=cluster2
+INFO:__main__:Storing generated config to: merged_output/dev/us-east-1/cluster2.yaml
+```
+
+Input example:
+```
+> tree examples/complex
+examples/complex
+├── default.yaml
+├── env=dev
+│   ├── env.yaml
+│   ├── region=us-east-1
+│   │   ├── cluster=cluster1
+│   │   │   └── cluster.yaml
+│   │   ├── cluster=cluster2
+│   │   │   └── cluster.yaml
+│   │   └── region.yaml
+│   └── region=us-west-2
+│       ├── cluster=cluster1
+│       │   └── cluster.yaml
+│       └── region.yaml
+└── env=prod
+    ├── env.yaml
+    └── region=eu-west-2
+        ├── cluster=ireland1
+        │   └── cluster.yaml
+        └── region.yaml
+```
+
+Output:
+```
+merged_output
+├── dev
+│   ├── us-east-1
+│   │   ├── cluster1.yaml
+│   │   └── cluster2.yaml
+│   └── us-west-2
+│       └── cluster1.yaml
+└── prod
+    └── eu-west-2
+        └── ireland1.yaml
+```
+
+Leveraging HIML, the config-merger script loads the configs tree structure and deep-merges all keys from all YAML files found from a root path to an edge. For each leaf directory, a file will be created under `--output-dir`.
+
+Under each level, there is a mandatory "level key" that is used by config-merger for computing the end result. This key should be present in one of the files under each level. (eg. env.yaml under env).

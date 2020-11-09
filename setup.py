@@ -48,7 +48,8 @@ setup(
     install_requires=_requires,
     entry_points={
         'console_scripts': [
-            'himl = himl.main:run'
+            'himl = himl.main:run',
+            'himl-config-merger = himl.config_merger:run'
         ]
     }
 )
