@@ -164,5 +164,5 @@ def run(args=None):
     # extract the list of absolute paths for leaf directories
     dirs = get_leaf_directories(opts.path, opts.leaf_directories)
 
-    # merge the configs for using HIML
+    # merge the configs using HIML
     merge_configs(dirs, opts.hierarchy_levels, opts.output_dir)

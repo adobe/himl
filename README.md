@@ -315,3 +315,14 @@ merged_output
 Leveraging HIML, the config-merger script loads the configs tree structure and deep-merges all keys from all YAML files found from a root path to an edge. For each leaf directory, a file will be created under `--output-dir`.
 
 Under each level, there is a mandatory "level key" that is used by config-merger for computing the end result. This key should be present in one of the files under each level. (eg. env.yaml under env).
+
+### Extra merger features
+
+Apart from the standard features found in the `PyYaml` library, the `himl-config-merger` component also implements a custom YAML tag called `!include`.
+
+Example:
+```yaml
+VA7:     !include configs/env=int/region=va7/kafka-brokers.yaml regionBrokers.VA7
+```
+
+This will replace the value after interpolation with the value of the regionBrokers.VA7 found under the configs/env=int/region=va7/kafka-brokers.yaml path.
