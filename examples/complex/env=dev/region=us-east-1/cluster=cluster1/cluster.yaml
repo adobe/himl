@@ -1,1 +1,21 @@
 cluster: cluster1
+
+testkey: |-
+  # Set to true to log user information returned from LDAP
+    verbose_logging = true
+
+    [[servers]]
+    # Ldap server host
+    host = "someaddress"
+
+    # Default port is 389 or 636 if use_ssl = true
+    port = 389
+
+    start_tls = true
+
+skipInterpolation_key: "{{`this is a {{ value }} that should not be interpolated`}}"
+skipInterpolation_key2: "before {{`this is a {{ value }} that should not be interpolated`}} after"
+skipInterpolation_dict:
+skipInterpolation_key: "{{`this is a {{ value }} that should not be interpolated`}}"
+skipInterpolation_list:
+  - "{{`this is a {{ value }} that should not be interpolated`}}"
