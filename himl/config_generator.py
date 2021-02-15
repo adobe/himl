@@ -85,14 +85,15 @@ class ConfigProcessor(object):
 
         generator.clean_escape_characters()
 
-        formatted_data = generator.output_data(data, output_format)
+        if print_data or output_file:
+            formatted_data = generator.output_data(data, output_format)
 
-        if print_data:
-            print(formatted_data)
+            if print_data:
+                print(formatted_data)
 
-        if output_file:
-            with open(output_file, 'w') as f:
-                f.write(formatted_data)
+            if output_file:
+                with open(output_file, 'w') as f:
+                    f.write(formatted_data)
 
         return data
 
