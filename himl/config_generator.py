@@ -161,7 +161,7 @@ class ConfigGenerator(object):
     @staticmethod
     def yaml_get_content(yaml_file):
         with open(yaml_file, 'r') as f:
-            content = yaml.load(f, Loader=yaml.FullLoader)
+            content = yaml.load(f, Loader=yaml.SafeLoad)
         return content if content else {}
 
     @staticmethod
@@ -229,7 +229,7 @@ class ConfigGenerator(object):
         return yaml.dump(data, Dumper=ConfigGenerator.yaml_dumper(), default_flow_style=False, width=200)
 
     def yaml_to_json(self, yaml_data):
-        return json.dumps(yaml.load(yaml_data, Loader=yaml.FullLoader), indent=4)
+        return json.dumps(yaml.load(yaml_data, Loader=yaml.SafeLoader), indent=4)
 
     def output_data(self, data, output_format):
         yaml_data = self.output_yaml_data(data)
