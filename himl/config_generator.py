@@ -161,7 +161,7 @@ class ConfigGenerator(object):
     @staticmethod
     def yaml_get_content(yaml_file):
         with open(yaml_file, 'r') as f:
-            content = yaml.load(f, Loader=yaml.SafeLoad)
+            content = yaml.load(f, Loader=yaml.SafeLoader)
         return content if content else {}
 
     @staticmethod
