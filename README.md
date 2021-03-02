@@ -56,7 +56,7 @@ exclude_keys = () # can choose to remove specific keys
 output_format = "yaml" # yaml/json
 
 
-config_processor.process(path=path, filters=filters, exclude_keys=exclude_keys, 
+config_processor.process(path=path, filters=filters, exclude_keys=exclude_keys,
                          output_format=output_format, print_data=True)
 
 ```
@@ -233,8 +233,22 @@ my_value: "{{s3.bucket(my-bucket).path(path/to/file.txt).base64encode(true).aws_
 
 #### [Vault](https://www.vaultproject.io/)
 
-Not yet implemented.
+Use vault cli to authenticate, fallback method via LDAP.
 
+Retrieve only one key value from a secret, the path tail is used as key:
+```yaml
+my_value: "{{vault.key/path/from/vault/key}}"
+```
+
+Retrieve all key/value pairs from a vault path:
+```yaml
+my_dict: "{{vault.path(/path/from/vault)}}"
+```
+
+Generate a token for a policy:
+```yaml
+my_token: "{{vault.token_policy(my_vault_policy)}}"
+```
 
 <a name="feature-terraform-remote-state"/>
 
