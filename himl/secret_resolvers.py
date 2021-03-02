@@ -37,7 +37,8 @@ class SSMSecretResolver(SecretResolver):
     def resolve(self, secret_type, secret_params):
         aws_profile = secret_params.get("aws_profile", self.default_aws_profile)
         if not aws_profile:
-            raise Exception("Could not find the aws_profile in the secret params for SSM secret: {}".format(secret_params))
+            raise Exception(
+                "Could not find the aws_profile in the secret params for SSM secret: {}".format(secret_params))
 
         path = self.get_param_or_exception("path", secret_params)
         region_name = secret_params.get("region_name", "us-east-1")
@@ -55,7 +56,8 @@ class S3SecretResolver(SecretResolver):
     def resolve(self, secret_type, secret_params):
         aws_profile = secret_params.get("aws_profile", self.default_aws_profile)
         if not aws_profile:
-            raise Exception("Could not find the aws_profile in the secret params for S3 secret: {}".format(secret_params))
+            raise Exception(
+                "Could not find the aws_profile in the secret params for S3 secret: {}".format(secret_params))
 
         bucket = self.get_param_or_exception("bucket", secret_params)
         path = self.get_param_or_exception("path", secret_params)
@@ -71,15 +73,23 @@ class VaultSecretResolver(SecretResolver):
         return secret_type == "vault"
 
     def resolve(self, secret_type, secret_params):
-        # Generate a token for a policy
-        policy = self.get_param_or_exception("token_policy", secret_params)
         vault = SimpleVault
-        return vault().get_token(policy)
+
+        # Generate a token for a policy
+        if "token_policy" in secret_params.keys():
+            policy = self.get_param_or_exception("token_policy", secret_params)
+            return vault().get_token(policy)
+
+        # Retrieve secret from vault path
+        if "path" in secret_params.keys():
+            path = self.get_param_or_exception("path", secret_params)
+            return vault().get_path(path)
 
 
 class AggregatedSecretResolver(SecretResolver):
     def __init__(self, default_aws_profile=None):
-        self.secret_resolvers = (SSMSecretResolver(default_aws_profile), S3SecretResolver(default_aws_profile), VaultSecretResolver())
+        self.secret_resolvers = (SSMSecretResolver(default_aws_profile), S3SecretResolver(default_aws_profile),
+                                 VaultSecretResolver())
 
     def supports(self, secret_type):
         return any([resolver.supports(secret_type) for resolver in self.secret_resolvers])

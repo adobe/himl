@@ -8,10 +8,10 @@
 # OF ANY KIND, either express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
 
-import os
 import logging
-import hvac
+import os
 
+import hvac
 
 logger = logging.getLogger(__name__)
 
@@ -23,24 +23,30 @@ class SimpleVault:
     def get_vault_client(self):
         url = os.getenv('VAULT_ADDR')
         namespace = os.getenv('VAULT_NAMESPACE')
-        username = os.getenv('VAULT_USERNAME')
-        password = os.getenv('VAULT_PASSWORD')
-        logger.info("Vault using url: {}, namespace: {}, username: {}".format(url, namespace, username))
+
+        logger.info("Vault using url: {}, namespace: {}".format(url, namespace))
 
         client = hvac.Client(
             url=url,
             namespace=namespace,
         )
 
-        try:
-            client.auth.ldap.login(
-                username=username,
-                password=password,
-            )
-            assert client.is_authenticated()
-            logger.info("Vault LDAP authenticated")
-        except Exception as e:
-            raise Exception("Error authenticating Vault over LDAP")
+        authenticated = client.is_authenticated()
+
+        if not authenticated:
+            logger.info("Vault not authenticated, trying LDAP fallback")
+
+            password = os.getenv('VAULT_PASSWORD')
+            username = os.getenv('VAULT_USERNAME')
+            try:
+                client.auth.ldap.login(
+                    username=username,
+                    password=password,
+                )
+                assert client.is_authenticated()
+                logger.info("Vault LDAP authenticated")
+            except Exception as e:
+                raise Exception("Error authenticating Vault over LDAP")
 
         return client
 
@@ -53,6 +59,15 @@ class SimpleVault:
             policies=[policy],
             role=role,
             lease='24h',
-       )
+        )
 
         return token['auth']['client_token']
+
+    def get_path(self, path):
+        mount_point = os.getenv('VAULT_MOUNT_POINT', 'kv')
+        client = self.get_vault_client()
+
+        result = client.secrets.kv.v2.read_secret_version(mount_point=mount_point, path=path)
+        secret_data = result['data']['data']
+
+        return secret_data
