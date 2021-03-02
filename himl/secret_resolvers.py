@@ -9,6 +9,7 @@
 # governing permissions and limitations under the License.
 
 import logging
+import os
 from .simplessm import SimpleSSM
 from .simples3 import SimpleS3
 from .simplevault import SimpleVault
@@ -84,6 +85,12 @@ class VaultSecretResolver(SecretResolver):
         if "path" in secret_params.keys():
             path = self.get_param_or_exception("path", secret_params)
             return vault().get_path(path)
+
+        if "key" in secret_params.keys():
+            key_path = os.path.split(self.get_param_or_exception("key", secret_params))
+            path = key_path[0]
+            key = key_path[1]
+            return vault().get_key(path, key)
 
 
 class AggregatedSecretResolver(SecretResolver):

@@ -66,8 +66,14 @@ class SimpleVault:
     def get_path(self, path):
         mount_point = os.getenv('VAULT_MOUNT_POINT', 'kv')
         client = self.get_vault_client()
-
         result = client.secrets.kv.v2.read_secret_version(mount_point=mount_point, path=path)
         secret_data = result['data']['data']
 
         return secret_data
+
+    def get_key(self, path, key):
+        secret_data = self.get_path(path)
+        print(secret_data)
+        secret_key_value = secret_data[key]
+
+        return secret_key_value
