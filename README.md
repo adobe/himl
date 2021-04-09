@@ -237,7 +237,7 @@ Use vault cli to authenticate, fallback method via LDAP.
 
 Retrieve only one key value from a secret, the path tail is used as key:
 ```yaml
-my_value: "{{vault.key/path/from/vault/key}}"
+my_value: "{{vault.key(/path/from/vault/key)}}"
 ```
 
 Retrieve all key/value pairs from a vault path:
