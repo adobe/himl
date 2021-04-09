@@ -26,7 +26,7 @@ class SimpleVault:
         namespace = os.getenv('VAULT_NAMESPACE')
         verify = not strtobool(os.getenv('VAULT_SKIP_VERIFY', 'false'))
 
-        logger.info("Vault using url: {}, namespace: {}".format(url, namespace))
+        logger.info("Vault using url: {}, namespace: {}, verify: {}".format(url, namespace, verify))
 
         client = hvac.Client(
             url=url,
