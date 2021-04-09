@@ -25,6 +25,10 @@ class SimpleVault:
         url = os.getenv('VAULT_ADDR')
         namespace = os.getenv('VAULT_NAMESPACE')
         verify = not strtobool(os.getenv('VAULT_SKIP_VERIFY', 'false'))
+        
+        if not verify:
+            import urllib3
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
         logger.info("Vault using url: {}, namespace: {}, verify: {}".format(url, namespace, verify))
 
