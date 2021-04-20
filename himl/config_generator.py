@@ -144,10 +144,17 @@ class ConfigGenerator(object):
         Dumper.add_representer(OrderedDict, dict_representer)
         Loader.add_constructor(_mapping_tag, dict_constructor)
 
-        Dumper.add_representer(str, SafeRepresenter.represent_str)
+        def str_representer_pipestyle(dumper, data):
+            style = '|' if '\n' in data else None
+            return dumper.represent_scalar('tag:yaml.org,2002:str', data, style=style)
+        Dumper.add_representer(str, str_representer_pipestyle)
 
         if not PY3:
-            Dumper.add_representer(unicode, SafeRepresenter.represent_unicode)
+            def unicode_representer_pipestyle(dumper, data):
+                style = u'|' if u'\n' in data else None
+                return dumper.represent_scalar(u'tag:yaml.org,2002:str', data, style=style)
+            Dumper.add_representer(unicode, unicode_representer_pipestyle)
+
         return Dumper
 
     @staticmethod
