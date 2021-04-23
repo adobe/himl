@@ -26,7 +26,9 @@ class SimpleVault:
         namespace = os.getenv('VAULT_NAMESPACE')
         verify = not strtobool(os.getenv('VAULT_SKIP_VERIFY', 'false'))
 
-        logger.info("Vault using url: {}, namespace: {}, verify: {}".format(url, namespace, verify))
+        logger.info("Vault using url: {}, namespace: {}".format(url, namespace))
+        if not verify:
+            logger.warning("Using insecure vault endpoint, verify: {}".format(verify))
 
         client = hvac.Client(
             url=url,
@@ -76,7 +78,6 @@ class SimpleVault:
 
     def get_key(self, path, key):
         secret_data = self.get_path(path)
-        print(secret_data)
         secret_key_value = secret_data[key]
 
         return secret_key_value
