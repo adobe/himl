@@ -158,8 +158,8 @@ def run(args=None):
     # load the !include tag
     Loader.add_constructor('!include', Loader.include)
 
-    # override the Yaml FullLoader with our custom loader
-    yaml.FullLoader = Loader
+    # override the Yaml SafeLoader with our custom loader
+    yaml.SafeLoader = Loader
 
     # extract the list of absolute paths for leaf directories
     dirs = get_leaf_directories(opts.path, opts.leaf_directories)
