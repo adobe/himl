@@ -17,7 +17,8 @@ import pathlib2
 import yaml
 from deepmerge import Merger
 
-from .interpolation import InterpolationResolver, EscapingResolver, InterpolationValidator, SecretResolver, DictIterator, replace_parent_working_directory
+from .interpolation import InterpolationResolver, EscapingResolver, InterpolationValidator, SecretResolver, \
+    DictIterator, replace_parent_working_directory, EnvVarResolver
 from .python_compat import iteritems, primitive_types, PY3
 from .remote_state import S3TerraformRemoteStateRetriever
 
@@ -67,6 +68,9 @@ class ConfigProcessor(object):
             # value1: "{{ssm.mysecret}}"
             # value2: "something-{{value1}} <--- this will be resolved at this step
             generator.resolve_interpolations()
+
+        generator.resolve_env()
+        generator.resolve_interpolations()
 
         if len(filters) > 0:
             generator.filter_data(filters)
@@ -278,6 +282,10 @@ class ConfigGenerator(object):
     def resolve_secrets(self, default_aws_profile):
         resolver = SecretResolver()
         self.generated_data = resolver.resolve_secrets(self.generated_data, default_aws_profile)
+
+    def resolve_env(self):
+        resolver = EnvVarResolver()
+        self.generated_data = resolver.resolve_env_vars(self.generated_data)
 
     def validate_interpolations(self):
         self.interpolation_validator.check_all_interpolations_resolved(self.generated_data)

@@ -10,6 +10,7 @@
 
 import re
 
+from .inject_env import EnvVarInjector
 from .inject_secrets import SecretInjector
 from .python_compat import iteritems, string_types, primitive_types
 
@@ -80,6 +81,14 @@ class SecretResolver(object):
         secrets_resolver = SecretsInterpolationResolver(injector)
         secrets_resolver.resolve_interpolations(data)
 
+        return data
+
+
+class EnvVarResolver(object):
+    def resolve_env_vars(self, data):
+        injector = EnvVarInjector()
+        env_resolver = EnvVarInterpolationsResolver(injector)
+        env_resolver.resolve_interpolations(data)
         return data
 
 
@@ -166,6 +175,15 @@ class SecretsInterpolationResolver(AbstractInterpolationResolver):
 
     def do_resolve_interpolation(self, line):
         return self.secrets_injector.inject_secret(line)
+
+
+class EnvVarInterpolationsResolver(AbstractInterpolationResolver):
+    def __init__(self, env_vars_injector):
+        AbstractInterpolationResolver.__init__(self)
+        self.env_vars_injector = env_vars_injector
+
+    def do_resolve_interpolation(self, line):
+        return self.env_vars_injector.inject_env_var(line)
 
 
 class InterpolationValidator(DictIterator):
