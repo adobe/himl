@@ -34,7 +34,7 @@ class EnvVarInjector(object):
         updated_line = line[2:-2]
 
         # check supported function to ensure the proper format is used
-        if not self.check_supported_function(updated_line):
+        if not self.is_env_interpolation(updated_line):
             return line
 
         # remove env( and ) to extract the env Variable
@@ -43,8 +43,5 @@ class EnvVarInjector(object):
         # If env variable is missing or not set, the output will be None
         return getenv(updated_line)
 
-    def check_supported_function(self, value):
+    def is_env_interpolation(self, value):
         return value.startswith('env(') and value.endswith(')')
-
-    def split_function_items(self, line):
-        line.split()
