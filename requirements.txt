@@ -1,8 +1,8 @@
-deepmerge>=0.0.5
-lru_cache>=0.2.3
-backports.functools_lru_cache>=1.5
-pathlib2>=2.3.4
-boto3>=1.9.110
-pyyaml>=5.1
-botocore>=1.12
-hvac>=0.10.8
+deepmerge==1.0.1
+lru_cache==0.2.3
+backports.functools_lru_cache==1.6.4
+pathlib2==2.3.6
+boto3==1.20.26
+pyyaml==6.0
+botocore==1.23.26
+hvac==0.11.2
