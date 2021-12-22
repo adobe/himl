@@ -11,17 +11,31 @@ It is ideal if you want to structure your hierarchy in such a way that you avoid
 
 Idea came from puppet's hiera.
 
-## Table of Contents  
+## Table of Contents
 
-1. [Installation](#installation)
-2. [Examples](#examples)
-3. [Features](#features)
-    * [Interpolation](#feature-interpolation)
-    * [Deep merge](#feature-deep-merge)
-    * [Secrets retrieval](#feature-secrets-retrieval)
-    * [Merge with Terraform remote state](#feature-terraform-remote-state)
-
-<a name="installation"/>
+- [himl](#himl)
+  - [Description](#description)
+  - [Table of Contents](#table-of-contents)
+  - [Installation](#installation)
+    - [Using `pip`](#using-pip)
+    - [Using `docker` image](#using-docker-image)
+    - [From Source](#from-source)
+  - [Examples](#examples)
+    - [Using the python module](#using-the-python-module)
+    - [Using the cli](#using-the-cli)
+  - [Features](#features)
+    - [Interpolation](#interpolation)
+      - [Interpolating simple values](#interpolating-simple-values)
+      - [Interpolating whole `dict`](#interpolating-whole-dict)
+    - [Deep merge](#deep-merge)
+    - [Secrets retrieval](#secrets-retrieval)
+      - [AWS SSM](#aws-ssm)
+      - [AWS S3](#aws-s3)
+      - [Vault](#vault)
+    - [Merge with Terraform remote state](#merge-with-terraform-remote-state)
+    - [Merge with env variables](#merge-with-env-variables)
+  - [himl config merger](#himl-config-merger)
+    - [Extra merger features](#extra-merger-features)
 
 ## Installation
 
@@ -45,8 +59,6 @@ git clone https://github.com/adobe/himl
 cd himl
 sudo python setup.py install
 ```
-
-<a name="examples"/>
 
 ## Examples
 
@@ -76,8 +88,6 @@ examples/simple
 └── production
     └── env.yaml
 ```
-
-<a name="deep-merge-example"/>
 
 The example also showcases deep merging of lists and maps.
 
@@ -169,11 +179,7 @@ examples/complex
         └── region.yaml
 ```
 
-<a name="features"/>
-
 ## Features
-
-<a name="feature-interpolation"/>
 
 ### Interpolation
 
@@ -215,14 +221,10 @@ tagging: "{{projects.webapp1.tagging}}"
 tagging: "{{projects.{{project.name}}.tagging}}"
 ```
 
-<a name="feature-deep-merge"/>
-
 ### Deep merge
 
 It's possible to have the same key (eg. a dict/list) in multiple files and combine them using a deep merge.
 See an example [here](https://github.com/adobe/himl#deep-merge-example).
-
-<a name="feature-secrets-retrieval"/>
 
 ### Secrets retrieval
 
@@ -256,8 +258,6 @@ Generate a token for a policy:
 ```yaml
 my_token: "{{vault.token_policy(my_vault_policy)}}"
 ```
-
-<a name="feature-terraform-remote-state"/>
 
 ### Merge with [Terraform remote state](https://www.terraform.io/docs/state/remote.html)
 
