@@ -63,7 +63,7 @@ class ConfigRunner(object):
                             help='the working directory')
         parser.add_argument('--multi-line-string', action='store_true',
                             help='will overwrite the global yaml dumper to use block style')
-        parser.add_argument('--version', action='version', version='%(prog)s v{version}'.format(version="0.8.1"),
+        parser.add_argument('--version', action='version', version='%(prog)s v{version}'.format(version="0.9.0"),
                             help='print himl version')
         return parser
 
