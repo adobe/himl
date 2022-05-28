@@ -1,4 +1,4 @@
-FROM python:3.10.4-slim@sha256:9dc81e50d552404344b5c343815ceef332da89df67cafbf31b5560a7ded3df12
+FROM python:3.10.4-slim@sha256:27579438c29f7529fbeccc67535152740c5ef02e1094a68bc9bf997e3136ba4c
 
 WORKDIR /config-merger
 
