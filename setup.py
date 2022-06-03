@@ -9,9 +9,6 @@ except ImportError:
 with open('README.md', encoding="utf-8") as f:
     _readme = f.read()
 
-_mydir = os.path.abspath(os.path.dirname(sys.argv[0]))
-_requires = [ r for r in open(os.path.sep.join((_mydir,'requirements.txt')), "r").read().split('\n') if len(r)>1 ]
-
 setup(
     name='himl',
     version="0.9.0",
@@ -46,7 +43,19 @@ setup(
     ],
     packages=['himl'],
     include_package_data=True,
-    install_requires=_requires,
+    install_requires=[
+        'deepmerge==1.0.1',
+        'lru_cache==0.2.3',
+        'backports.functools_lru_cache==1.6.4',
+        'pathlib2==2.3.7.post1',
+        'pyyaml==6.0'
+    ],
+    extras_require={
+        'extras': [
+            'boto3==1.22.12',
+            'hvac==0.11.2'
+        ]
+    },
     entry_points={
         'console_scripts': [
             'himl = himl.main:run',

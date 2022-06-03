@@ -1,7 +1,0 @@
-deepmerge==1.0.1
-lru_cache==0.2.3
-backports.functools_lru_cache==1.6.4
-pathlib2==2.3.7.post1
-boto3==1.22.12
-pyyaml==6.0
-hvac==0.11.2
