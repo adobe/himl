@@ -52,7 +52,7 @@ setup(
     ],
     extras_require={
         'extras': [
-            'boto3==1.22.12',
+            'boto3==1.24.2',
             'hvac==0.11.2'
         ]
     },
