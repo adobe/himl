@@ -51,8 +51,10 @@ setup(
         'pyyaml==6.0'
     ],
     extras_require={
-        'extras': [
+        'aws': [
             'boto3==1.24.2',
+        ],
+        'vault': [
             'hvac==0.11.2'
         ]
     },
