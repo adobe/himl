@@ -9,6 +9,25 @@ except ImportError:
 with open('README.md', encoding="utf-8") as f:
     _readme = f.read()
 
+install_requires = [
+    'deepmerge==1.0.1',
+    'lru_cache==0.2.3',
+    'backports.functools_lru_cache==1.6.4',
+    'pathlib2==2.3.7.post1',
+    'pyyaml==6.0',
+]
+
+extras_require = {
+    'aws': [
+        'boto3==1.24.2',
+    ],
+    'vault': [
+        'hvac==0.11.2',
+    ],
+}
+
+extras_require['extras'] = [dep for deps in extras_require.values() for dep in deps]
+
 setup(
     name='himl',
     version="0.9.0",
@@ -43,25 +62,8 @@ setup(
     ],
     packages=['himl'],
     include_package_data=True,
-    install_requires=[
-        'deepmerge==1.0.1',
-        'lru_cache==0.2.3',
-        'backports.functools_lru_cache==1.6.4',
-        'pathlib2==2.3.7.post1',
-        'pyyaml==6.0'
-    ],
-    extras_require={
-        'extras': [
-            'boto3==1.24.2',
-            'hvac==0.11.2'
-        ],
-        'aws': [
-            'boto3==1.24.2'
-        ],
-        'vault': [
-            'hvac==0.11.2'
-        ]
-    },
+    install_requires=install_requires,
+    extras_require=extras_require,
     entry_points={
         'console_scripts': [
             'himl = himl.main:run',
