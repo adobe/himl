@@ -9,7 +9,7 @@ except ImportError:
 with open('README.md', encoding="utf-8") as f:
     _readme = f.read()
 
-install_requires = [
+_install_requires = [
     'deepmerge==1.0.1',
     'lru_cache==0.2.3',
     'backports.functools_lru_cache==1.6.4',
@@ -17,7 +17,7 @@ install_requires = [
     'pyyaml==6.0',
 ]
 
-extras_require = {
+_extras_require = {
     'aws': [
         'boto3==1.24.2',
     ],
@@ -25,8 +25,7 @@ extras_require = {
         'hvac==0.11.2',
     ],
 }
-
-extras_require['extras'] = [dep for deps in extras_require.values() for dep in deps]
+_extras_require['extras'] = [dep for deps in _extras_require.values() for dep in deps]
 
 setup(
     name='himl',
