@@ -29,7 +29,7 @@ _extras_require['extras'] = [dep for deps in _extras_require.values() for dep in
 
 setup(
     name='himl',
-    version="0.9.0",
+    version="0.10.0",
     description='A hierarchical config using yaml',
     long_description=_readme + '\n\n',
     long_description_content_type='text/markdown',
