@@ -43,8 +43,10 @@ Idea came from puppet's hiera.
 
 ```sh
 pip install himl
-# or, optionally install with extras dependencies: vault and aws interpolation support
+# or, optionally install with all extras dependencies: vault and aws interpolation support
 pip install himl[extras]
+# or, specify which extras dependencies you need
+pip install himl[vault,aws]
 ```
 
 ### Using `docker` image
