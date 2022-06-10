@@ -61,8 +61,8 @@ setup(
     ],
     packages=['himl'],
     include_package_data=True,
-    install_requires=install_requires,
-    extras_require=extras_require,
+    install_requires=_install_requires,
+    extras_require=_extras_require,
     entry_points={
         'console_scripts': [
             'himl = himl.main:run',
