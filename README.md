@@ -43,10 +43,6 @@ Idea came from puppet's hiera.
 
 ```sh
 pip install himl
-# or, optionally install with all extras dependencies: vault and aws interpolation support
-pip install himl[extras]
-# or, specify which extras dependencies you need
-pip install himl[vault,aws]
 ```
 
 ### Using `docker` image
@@ -61,7 +57,7 @@ See all docker tags at: https://github.com/adobe/himl/pkgs/container/himl/versio
 ```
 git clone https://github.com/adobe/himl
 cd himl
-sudo python install -e .[extras]
+sudo python install -e .
 ```
 
 ## Examples
