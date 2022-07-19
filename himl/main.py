@@ -10,7 +10,7 @@
 
 import argparse
 import os
-
+from copy import deepcopy
 from .config_generator import ConfigProcessor
 
 
@@ -20,6 +20,22 @@ class ConfigRunner(object):
         parser = self.get_parser()
         opts = parser.parse_args(args)
         self.do_run(opts)
+
+    """
+    example of custom merge strategy. pass this function to ConfigProcessor to override default merging behavior, which is append
+    """
+    def strategy_merge_override(self,config, path, base, nxt):
+        """merge list of items. if items have same id, nxt replaces base."""
+        """if remove flag is present in nxt item, remove base and not add nxt"""
+        result = deepcopy(base)
+        for nxto in nxt:
+            for baseo in result:
+                if 'id' in baseo and 'id' in nxto and baseo['id'] == nxto['id']:
+                    result.remove(baseo) #same id, remove previous item
+                    continue
+            if 'remove' not in nxto:
+                result.append(nxto)
+        return result
 
     def do_run(self, opts):
         cwd = opts.cwd if opts.cwd else os.getcwd()
@@ -31,7 +47,8 @@ class ConfigRunner(object):
         config_processor = ConfigProcessor()
         config_processor.process(cwd, opts.path, filters, excluded_keys, opts.enclosing_key, opts.remove_enclosing_key,
                                  opts.output_format, opts.print_data, opts.output_file, opts.skip_interpolation_resolving,
-                                 opts.skip_interpolation_validation, opts.skip_secrets, opts.multi_line_string)
+                                 opts.skip_interpolation_validation, opts.skip_secrets, opts.multi_line_string,
+                                 type_strategies= [(list, [self.strategy_merge_override,"append"]), (dict, ["merge"])] )
 
     @staticmethod
     def get_parser(parser=None):

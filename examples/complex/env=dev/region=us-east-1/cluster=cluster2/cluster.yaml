@@ -1,1 +1,13 @@
 cluster: cluster2
+cluster_metrics:
+  - id: 1
+    metric: cpu
+    value: 95
+  - id: 2
+    metric: memory
+    value: 95   
+  - id: 3
+    metric: disk
+    remove: True
+  - metric: exec
+    value: 5

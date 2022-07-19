@@ -28,9 +28,11 @@ logger = logging.getLogger(__name__)
 class ConfigProcessor(object):
 
     def process(self, cwd=None, path=None, filters=(), exclude_keys=(), enclosing_key=None, remove_enclosing_key=None, output_format="yaml",
-                print_data=False, output_file=None, skip_interpolations=False, skip_interpolation_validation=False, skip_secrets=False, multi_line_string=False):
+                print_data=False, output_file=None, skip_interpolations=False, skip_interpolation_validation=False, skip_secrets=False, multi_line_string=False,
+                type_strategies = [(list, ["append"]), (dict, ["merge"])], fallback_strategies = ["override"], type_conflict_strategies = ["override"]):
 
         path = self.get_relative_path(path)
+       
 
         if skip_interpolations:
             skip_interpolation_validation = True
@@ -41,7 +43,7 @@ class ConfigProcessor(object):
         if cwd is None:
             cwd = os.getcwd()
 
-        generator = ConfigGenerator(cwd, path, multi_line_string)
+        generator = ConfigGenerator(cwd, path, multi_line_string,type_strategies, fallback_strategies, type_conflict_strategies)
         generator.generate_hierarchy()
         generator.process_hierarchy()
 
@@ -120,13 +122,15 @@ class ConfigGenerator(object):
     will contain merged data on each layer.
     """
 
-    def __init__(self, cwd, path, multi_line_string):
+    def __init__(self, cwd, path, multi_line_string,type_strategies, fallback_strategies, type_conflict_strategies):
         self.cwd = cwd
         self.path = path
         self.hierarchy = self.generate_hierarchy()
         self.generated_data = OrderedDict()
         self.interpolation_validator = InterpolationValidator()
-
+        self.type_strategies = type_strategies
+        self.fallback_strategies = fallback_strategies
+        self.type_conflict_strategies = type_conflict_strategies
         if multi_line_string is True:
             yaml.representer.BaseRepresenter.represent_scalar = ConfigGenerator.custom_represent_scalar
 
@@ -176,8 +180,8 @@ class ConfigGenerator(object):
         return content if content else {}
 
     @staticmethod
-    def merge_value(reference, new_value):
-        merger = Merger([(list, ["append"]), (dict, ["merge"])], ["override"], ["override"])
+    def merge_value(reference, new_value,type_strategies, fallback_strategies, type_conflict_strategies):
+        merger = Merger(type_strategies, fallback_strategies, type_conflict_strategies)
         if isinstance(new_value, (list, set, dict)):
             new_reference = merger.merge(reference, new_value)
         else:
@@ -185,13 +189,13 @@ class ConfigGenerator(object):
         return new_reference
 
     @staticmethod
-    def merge_yamls(values, yaml_content):
+    def merge_yamls(values, yaml_content,type_strategies, fallback_strategies, type_conflict_strategies):
         for key, value in iteritems(yaml_content):
             if key in values and type(values[key]) != type(value):
                 raise Exception("Failed to merge key '{}', because of mismatch in type: {} vs {}"
                                 .format(key, type(values[key]), type(value)))
             if key in values and not isinstance(value, primitive_types):
-                values[key] = ConfigGenerator.merge_value(values[key], value)
+                values[key] = ConfigGenerator.merge_value(values[key], value,type_strategies, fallback_strategies, type_conflict_strategies)
             else:
                 values[key] = value
 
@@ -224,7 +228,7 @@ class ConfigGenerator(object):
         for yaml_files in self.hierarchy:
             for yaml_file in yaml_files:
                 yaml_content = self.yaml_get_content(yaml_file)
-                self.merge_yamls(merged_values, yaml_content)
+                self.merge_yamls(merged_values, yaml_content,self.type_strategies, self.fallback_strategies,self.type_conflict_strategies)
                 self.resolve_simple_interpolations(merged_values, yaml_file)
         self.generated_data = merged_values
 
