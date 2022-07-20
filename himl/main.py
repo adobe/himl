@@ -22,17 +22,26 @@ class ConfigRunner(object):
         self.do_run(opts)
 
     """
-    example of custom merge strategy. pass this function to ConfigProcessor to override default merging behavior, which is append
+    example of custom merge strategy. pass this function to ConfigProcessor to override default merging behavior for list data type, 
+    which is append
     """
     def strategy_merge_override(self,config, path, base, nxt):
-        """merge list of items. if items have same id, nxt replaces base."""
+        """merge list of objects. if objects have same id, nxt replaces base."""
         """if remove flag is present in nxt item, remove base and not add nxt"""
         result = deepcopy(base)
         for nxto in nxt:
             for baseo in result:
+                # if list is a list of dicts, check for 'id' field for uniqueness  
                 if 'id' in baseo and 'id' in nxto and baseo['id'] == nxto['id']:
                     result.remove(baseo) #same id, remove previous item
                     continue
+                # if list is a list of strings, simply compare string values, and don't duplicate strings
+                # this behavior is actually the same as the default append_unique (using set) strategy 
+                # but unfortuntely deepmerge does not provide chained executed strategies, only fallback strategies
+                if isinstance(baseo,str) and isinstance(nxto,str) and baseo == nxto:
+                    result.remove(baseo)
+                    continue
+
             if 'remove' not in nxto:
                 result.append(nxto)
         return result
@@ -45,6 +54,12 @@ class ConfigRunner(object):
             opts.print_data = True
 
         config_processor = ConfigProcessor()
+        # use default merge strategies
+        config_processor.process(cwd, opts.path, filters, excluded_keys, opts.enclosing_key, opts.remove_enclosing_key,
+                                 opts.output_format, opts.print_data, opts.output_file, opts.skip_interpolation_resolving,
+                                 opts.skip_interpolation_validation, opts.skip_secrets, opts.multi_line_string)
+                                 
+        # pass in optional type_strategies for custom merging behavior
         config_processor.process(cwd, opts.path, filters, excluded_keys, opts.enclosing_key, opts.remove_enclosing_key,
                                  opts.output_format, opts.print_data, opts.output_file, opts.skip_interpolation_resolving,
                                  opts.skip_interpolation_validation, opts.skip_secrets, opts.multi_line_string,

@@ -11,3 +11,6 @@ cluster_metrics:
     remove: True
   - metric: exec
     value: 5
+metrics:
+  - cpu
+  - exec
