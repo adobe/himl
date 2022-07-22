@@ -22,6 +22,9 @@ metrics:
   - cpu
   - memory
   - disk
+myList:
+ - id1
+ - id4
 # Fetching the secret value at runtime, from a secrets store (in this case AWS SSM).
 # passphrase: "{{ssm.path(/key/coming/from/aws/secrets/store/manager).aws_profile(myprofile)}}"
 

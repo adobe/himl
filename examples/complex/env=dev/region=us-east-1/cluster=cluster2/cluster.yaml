@@ -14,3 +14,7 @@ cluster_metrics:
 metrics:
   - cpu
   - exec
+myList:
+ - id1
+ - id2
+ - id3

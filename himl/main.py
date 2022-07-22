@@ -12,39 +12,15 @@ import argparse
 import os
 from copy import deepcopy
 from .config_generator import ConfigProcessor
+import importlib
 
-
+from inspect import getmembers, isfunction
 class ConfigRunner(object):
 
     def run(self, args):
         parser = self.get_parser()
         opts = parser.parse_args(args)
         self.do_run(opts)
-
-    """
-    example of custom merge strategy. pass this function to ConfigProcessor to override default merging behavior for list data type, 
-    which is append
-    """
-    def strategy_merge_override(self,config, path, base, nxt):
-        """merge list of objects. if objects have same id, nxt replaces base."""
-        """if remove flag is present in nxt item, remove base and not add nxt"""
-        result = deepcopy(base)
-        for nxto in nxt:
-            for baseo in result:
-                # if list is a list of dicts, check for 'id' field for uniqueness  
-                if 'id' in baseo and 'id' in nxto and baseo['id'] == nxto['id']:
-                    result.remove(baseo) #same id, remove previous item
-                    continue
-                # if list is a list of strings, simply compare string values, and don't duplicate strings
-                # this behavior is actually the same as the default append_unique (using set) strategy 
-                # but unfortuntely deepmerge does not provide chained executed strategies, only fallback strategies
-                if isinstance(baseo,str) and isinstance(nxto,str) and baseo == nxto:
-                    result.remove(baseo)
-                    continue
-
-            if 'remove' not in nxto:
-                result.append(nxto)
-        return result
 
     def do_run(self, opts):
         cwd = opts.cwd if opts.cwd else os.getcwd()
@@ -53,17 +29,21 @@ class ConfigRunner(object):
         if opts.output_file is None:
             opts.print_data = True
 
+        merge_list_strategy = ["append"] #default merge strategy for list
+        if opts.merge_list_strategy is not None:
+            if opts.merge_list_strategy[0] == 'default': #default merge strategy provided by himl/deepmerge
+                merge_list_strategy = opts.merge_list_strategy[1] #only viable options are append/override/prepend/append_unique
+            else:
+                imported_module = importlib.import_module(opts.merge_list_strategy[0])
+                if callable(func := getattr(imported_module, opts.merge_list_strategy[1])):
+                    merge_list_strategy = [func,"append"] #use append as the fallback strategy
+
         config_processor = ConfigProcessor()
-        # use default merge strategies
-        config_processor.process(cwd, opts.path, filters, excluded_keys, opts.enclosing_key, opts.remove_enclosing_key,
-                                 opts.output_format, opts.print_data, opts.output_file, opts.skip_interpolation_resolving,
-                                 opts.skip_interpolation_validation, opts.skip_secrets, opts.multi_line_string)
                                  
-        # pass in optional type_strategies for custom merging behavior
         config_processor.process(cwd, opts.path, filters, excluded_keys, opts.enclosing_key, opts.remove_enclosing_key,
                                  opts.output_format, opts.print_data, opts.output_file, opts.skip_interpolation_resolving,
                                  opts.skip_interpolation_validation, opts.skip_secrets, opts.multi_line_string,
-                                 type_strategies= [(list, [self.strategy_merge_override,"append"]), (dict, ["merge"])] )
+                                 type_strategies= [(list, merge_list_strategy), (dict, ["merge"])] )
 
     @staticmethod
     def get_parser(parser=None):
@@ -95,6 +75,8 @@ class ConfigRunner(object):
                             help='the working directory')
         parser.add_argument('--multi-line-string', action='store_true',
                             help='will overwrite the global yaml dumper to use block style')
+        parser.add_argument('--merge-list-strategy', dest='merge_list_strategy', nargs=2,
+                            help='override default merge strategy for list. format is module_name function_name. if using default strategies, module_name is default, function_name is append/override/prepend/append_unique')
         parser.add_argument('--version', action='version', version='%(prog)s v{version}'.format(version="0.10.0"),
                             help='print himl version')
         return parser

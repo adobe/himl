@@ -43,7 +43,7 @@ class ConfigProcessor(object):
         if cwd is None:
             cwd = os.getcwd()
 
-        generator = ConfigGenerator(cwd, path, multi_line_string,type_strategies, fallback_strategies, type_conflict_strategies)
+        generator = ConfigGenerator(cwd, path, multi_line_string, type_strategies, fallback_strategies, type_conflict_strategies)
         generator.generate_hierarchy()
         generator.process_hierarchy()
 
@@ -180,7 +180,7 @@ class ConfigGenerator(object):
         return content if content else {}
 
     @staticmethod
-    def merge_value(reference, new_value,type_strategies, fallback_strategies, type_conflict_strategies):
+    def merge_value(reference, new_value, type_strategies, fallback_strategies, type_conflict_strategies):
         merger = Merger(type_strategies, fallback_strategies, type_conflict_strategies)
         if isinstance(new_value, (list, set, dict)):
             new_reference = merger.merge(reference, new_value)
@@ -189,13 +189,13 @@ class ConfigGenerator(object):
         return new_reference
 
     @staticmethod
-    def merge_yamls(values, yaml_content,type_strategies, fallback_strategies, type_conflict_strategies):
+    def merge_yamls(values, yaml_content, type_strategies, fallback_strategies, type_conflict_strategies):
         for key, value in iteritems(yaml_content):
             if key in values and type(values[key]) != type(value):
                 raise Exception("Failed to merge key '{}', because of mismatch in type: {} vs {}"
                                 .format(key, type(values[key]), type(value)))
             if key in values and not isinstance(value, primitive_types):
-                values[key] = ConfigGenerator.merge_value(values[key], value,type_strategies, fallback_strategies, type_conflict_strategies)
+                values[key] = ConfigGenerator.merge_value(values[key], value, type_strategies, fallback_strategies, type_conflict_strategies)
             else:
                 values[key] = value
 
@@ -228,7 +228,7 @@ class ConfigGenerator(object):
         for yaml_files in self.hierarchy:
             for yaml_file in yaml_files:
                 yaml_content = self.yaml_get_content(yaml_file)
-                self.merge_yamls(merged_values, yaml_content,self.type_strategies, self.fallback_strategies,self.type_conflict_strategies)
+                self.merge_yamls(merged_values, yaml_content, self.type_strategies, self.fallback_strategies, self.type_conflict_strategies)
                 self.resolve_simple_interpolations(merged_values, yaml_file)
         self.generated_data = merged_values
 
