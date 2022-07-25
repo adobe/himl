@@ -6,8 +6,11 @@ from deepmerge import STRATEGY_END
 
 """
 Example function to demonstrate how to override default merging behavior.
+
 If you are using main.py to invoke himl, pass it in as command line argument. 
-i.e. himl examples/complex/env=dev/region=us-east-1/cluster=cluster2 --merge-list-strategy himl.custom_merger_example strategy_merge_override
+i.e. 
+        himl examples/complex/env=dev/region=us-east-1/cluster=cluster2 --merge-list-strategy himl.custom_merger_example strategy_merge_override
+
 If you have access to ConfigProcessor, pass the function into process() method.
 i.e. 
         config_processor = ConfigProcessor()

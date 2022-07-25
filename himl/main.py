@@ -13,8 +13,25 @@ import os
 from copy import deepcopy
 from .config_generator import ConfigProcessor
 import importlib
-
+from enum import Enum
 from inspect import getmembers, isfunction
+
+class DefaultMergeStrategy(Enum):
+    append = 'append'
+    override = 'override'
+    prepend = 'prepend'
+    append_unique = 'append_unique' #WARNING: current this strategy does not support list of dicts, only list of str
+
+    def __str__(self):
+        return self.name
+
+    @staticmethod
+    def from_string(s):
+        try:
+            return DefaultMergeStrategy[s]
+        except KeyError:
+            raise ValueError(f'ERROR: Allowable values for default merge strategies are: append/override/prepend/append_unique. %s is not supported. ' % s)
+
 class ConfigRunner(object):
 
     def run(self, args):
@@ -32,12 +49,16 @@ class ConfigRunner(object):
         merge_list_strategy = ["append"] #default merge strategy for list
         if opts.merge_list_strategy is not None:
             if opts.merge_list_strategy[0] == 'default': #default merge strategy provided by himl/deepmerge
-                merge_list_strategy = opts.merge_list_strategy[1] #only viable options are append/override/prepend/append_unique
+                try:
+                    merge_list_strategy = [DefaultMergeStrategy.from_string(opts.merge_list_strategy[1]).value] #only viable options are append/override/prepend/append_unique
+                except ValueError as err:
+                    print(err)
+                    return       
             else:
                 imported_module = importlib.import_module(opts.merge_list_strategy[0])
                 if callable(func := getattr(imported_module, opts.merge_list_strategy[1])):
                     merge_list_strategy = [func,"append"] #use append as the fallback strategy
-
+  
         config_processor = ConfigProcessor()
                                  
         config_processor.process(cwd, opts.path, filters, excluded_keys, opts.enclosing_key, opts.remove_enclosing_key,
