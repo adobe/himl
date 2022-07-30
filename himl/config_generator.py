@@ -32,7 +32,6 @@ class ConfigProcessor(object):
                 type_strategies = [(list, ["append"]), (dict, ["merge"])], fallback_strategies = ["override"], type_conflict_strategies = ["override"]):
 
         path = self.get_relative_path(path)
-       
 
         if skip_interpolations:
             skip_interpolation_validation = True

@@ -5,16 +5,9 @@ from copy import deepcopy
 from deepmerge import STRATEGY_END
 
 """
-Example function to demonstrate how to override default merging behavior.
-
-If you are using main.py to invoke himl, pass it in as command line argument. 
-i.e. 
-        himl examples/complex/env=dev/region=us-east-1/cluster=cluster2 --merge-list-strategy himl.custom_merger_example strategy_merge_override
-
-If you have access to ConfigProcessor, pass the function into process() method.
-i.e. 
+Example function to demonstrate how to provide a custom merging behavior to himl.
+How to use it:
         config_processor = ConfigProcessor()
-                                 
         config_processor.process(cwd, opts.path, filters, excluded_keys, opts.enclosing_key, opts.remove_enclosing_key,
                                  opts.output_format, opts.print_data, opts.output_file, opts.skip_interpolation_resolving,
                                  opts.skip_interpolation_validation, opts.skip_secrets, opts.multi_line_string,
@@ -33,4 +26,4 @@ def strategy_merge_override(config, path, base, nxt):
                 result.remove(baseo) #same id, remove previous item
         if 'remove' not in nxto:
             result.append(nxto)
-    return  result
+    return result

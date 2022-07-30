@@ -14,23 +14,15 @@ from copy import deepcopy
 from .config_generator import ConfigProcessor
 import importlib
 from enum import Enum
-from inspect import getmembers, isfunction
 
 class DefaultMergeStrategy(Enum):
     append = 'append'
     override = 'override'
     prepend = 'prepend'
-    append_unique = 'append_unique' #WARNING: current this strategy does not support list of dicts, only list of str
+    append_unique = 'append_unique' #WARNING: currently this strategy does not support list of dicts, only list of str
 
     def __str__(self):
-        return self.name
-
-    @staticmethod
-    def from_string(s):
-        try:
-            return DefaultMergeStrategy[s]
-        except KeyError:
-            raise ValueError(f'ERROR: Allowable values for default merge strategies are: append/override/prepend/append_unique. %s is not supported. ' % s)
+        return self.value
 
 class ConfigRunner(object):
 
@@ -48,17 +40,8 @@ class ConfigRunner(object):
 
         merge_list_strategy = ["append"] #default merge strategy for list
         if opts.merge_list_strategy is not None:
-            if opts.merge_list_strategy[0] == 'default': #default merge strategy provided by himl/deepmerge
-                try:
-                    merge_list_strategy = [DefaultMergeStrategy.from_string(opts.merge_list_strategy[1]).value] #only viable options are append/override/prepend/append_unique
-                except ValueError as err:
-                    print(err)
-                    return       
-            else:
-                imported_module = importlib.import_module(opts.merge_list_strategy[0])
-                if callable(func := getattr(imported_module, opts.merge_list_strategy[1])):
-                    merge_list_strategy = [func,"append"] #use append as the fallback strategy
-  
+            merge_list_strategy = [opts.merge_list_strategy.value]
+
         config_processor = ConfigProcessor()
                                  
         config_processor.process(cwd, opts.path, filters, excluded_keys, opts.enclosing_key, opts.remove_enclosing_key,
@@ -96,12 +79,11 @@ class ConfigRunner(object):
                             help='the working directory')
         parser.add_argument('--multi-line-string', action='store_true',
                             help='will overwrite the global yaml dumper to use block style')
-        parser.add_argument('--merge-list-strategy', dest='merge_list_strategy', nargs=2,
-                            help='override default merge strategy for list. format is module_name function_name. if using default strategies, module_name is default, function_name is append/override/prepend/append_unique')
+        parser.add_argument('--merge-list-strategy', dest='merge_list_strategy', type=DefaultMergeStrategy, choices=list(DefaultMergeStrategy),
+                            help='override default merge strategy for list')
         parser.add_argument('--version', action='version', version='%(prog)s v{version}'.format(version="0.10.0"),
                             help='print himl version')
         return parser
-
 
 def run(args=None):
     ConfigRunner().run(args)
