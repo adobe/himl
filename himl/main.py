@@ -10,12 +10,10 @@
 
 import argparse
 import os
-from copy import deepcopy
 from .config_generator import ConfigProcessor
-import importlib
 from enum import Enum
 
-class DefaultMergeStrategy(Enum):
+class ListMergeStrategy(Enum):
     append = 'append'
     override = 'override'
     prepend = 'prepend'
@@ -79,7 +77,7 @@ class ConfigRunner(object):
                             help='the working directory')
         parser.add_argument('--multi-line-string', action='store_true',
                             help='will overwrite the global yaml dumper to use block style')
-        parser.add_argument('--merge-list-strategy', dest='merge_list_strategy', type=DefaultMergeStrategy, choices=list(DefaultMergeStrategy),
+        parser.add_argument('--list-merge-strategy', dest='merge_list_strategy', type=ListMergeStrategy, choices=list(ListMergeStrategy),
                             help='override default merge strategy for list')
         parser.add_argument('--version', action='version', version='%(prog)s v{version}'.format(version="0.10.0"),
                             help='print himl version')

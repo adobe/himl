@@ -136,7 +136,7 @@ usage: himl [-h] [--output-file OUTPUT_FILE] [--format OUTPUT_FORMAT]
              [--skip-interpolation-validation]
              [--skip-interpolation-resolving] [--enclosing-key ENCLOSING_KEY]
              [--cwd CWD]
-             [--merge-list-strategy {append,override,prepend,append_unique}]
+             [--list-merge-strategy {append,override,prepend,append_unique}]
              path
 ```
 
