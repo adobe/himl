@@ -121,7 +121,7 @@ class ConfigGenerator(object):
     will contain merged data on each layer.
     """
 
-    def __init__(self, cwd, path, multi_line_string,type_strategies, fallback_strategies, type_conflict_strategies):
+    def __init__(self, cwd, path, multi_line_string, type_strategies, fallback_strategies, type_conflict_strategies):
         self.cwd = cwd
         self.path = path
         self.hierarchy = self.generate_hierarchy()
