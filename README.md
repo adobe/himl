@@ -136,6 +136,7 @@ usage: himl [-h] [--output-file OUTPUT_FILE] [--format OUTPUT_FORMAT]
              [--skip-interpolation-validation]
              [--skip-interpolation-resolving] [--enclosing-key ENCLOSING_KEY]
              [--cwd CWD]
+             [--list-merge-strategy {append,override,prepend,append_unique}]
              path
 ```
 
@@ -352,3 +353,38 @@ VA7:     !include configs/env=int/region=va7/kafka-brokers.yaml regionBrokers.VA
 ```
 
 This will replace the value after interpolation with the value of the regionBrokers.VA7 found under the configs/env=int/region=va7/kafka-brokers.yaml path.
+
+## Custom merge strategy
+An optional parameter `type_strategies` can be passed into ConfigProcessor to define custom merging behavior. It could be custom functions that fit your needs.
+Your function should take the arguments of (config, path, base, nxt) and return the merged result.
+
+Example:
+```py
+from himl import ConfigProcessor
+
+def strategy_merge_override(config, path, base, nxt):
+    """merge list of dicts. if objects have same id, nxt replaces base."""
+    """if remove flag is present in nxt item, remove base and not add nxt"""
+    result = deepcopy(base)
+    for nxto in nxt:
+        for baseo in result:
+            # if list is not a list of dicts, bail out and let the next strategy to execute
+            if not isinstance(baseo,dict) or not isinstance(nxto,dict):
+                return STRATEGY_END
+            if 'id' in baseo and 'id' in nxto and baseo['id'] == nxto['id']:
+                result.remove(baseo) #same id, remove previous item
+        if 'remove' not in nxto:
+            result.append(nxto)
+    return result
+
+config_processor = ConfigProcessor()
+path = "examples/simple/production"
+filters = () # can choose to output only specific keys
+exclude_keys = () # can choose to remove specific keys
+output_format = "yaml" # yaml/json
+
+config_processor.process(path=path, filters=filters, exclude_keys=exclude_keys,
+                         output_format=output_format, print_data=True,
+                         type_strategies= [(list, [strategy_merge_override,'append']), (dict, ["merge"])] ))
+
+```
