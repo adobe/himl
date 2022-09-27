@@ -276,7 +276,8 @@ class ConfigGenerator(object):
         if "remote_states" in self.generated_data:
             state_files = self.generated_data["remote_states"]
             remote_states = remote_state_retriever.get_dynamic_data(state_files)
-            self.merge_value(self.generated_data, remote_states)
+            self.merge_value(self.generated_data, remote_states, self.type_strategies, self.fallback_strategies,
+                             self.type_conflict_strategies)
 
     def resolve_interpolations(self):
         resolver = InterpolationResolver()
