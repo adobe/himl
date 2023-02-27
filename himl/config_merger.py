@@ -81,7 +81,7 @@ def merge_configs(directories, levels, output_dir):
     for path in directories:
         thread_config.append([config_processor,path,levels, output_dir])
     
-    with Pool(4) as p:
+    with Pool(8) as p:
         p.map(merge_logic, thread_config)
 
 
