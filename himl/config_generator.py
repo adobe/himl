@@ -63,25 +63,13 @@ class ConfigProcessor(object):
 
         # Resolve multiple levels of interpolations:
         if not skip_interpolations:
-            generator.resolve_interpolations()
-
-            # Resolve nested interpolations:
-            # Example:
-            # map1:
-            #    key1: value1
-            # map2: "{{map1.key1}}"
-            # value: "something-{{map2.key1}} <--- this will be resolved at this step
-            generator.resolve_interpolations()
-
             # Add dynamic data and resolve interpolations using dynamic data:
             generator.add_dynamic_data()
-            generator.resolve_interpolations()
-
+            
             # Add env vars and resolve interpolations using env vars:
             generator.resolve_env()
-            generator.resolve_interpolations()
 
-            # Add secrets and resolve interpolations using secrets:
+             # Add secrets and resolve interpolations using secrets:
             if not skip_secrets:
                 default_aws_profile = self.get_default_aws_profile(generator.generated_data)
                 generator.resolve_secrets(default_aws_profile)
@@ -89,7 +77,16 @@ class ConfigProcessor(object):
                 # Example:
                 # value1: "{{ssm.mysecret}}"
                 # value2: "something-{{value1}} <--- this will be resolved at this step
-                generator.resolve_interpolations()
+            
+            
+            # Resolve nested interpolations:
+            # Example:
+            # map1:
+            #    key1: value1
+            # map2: "{{map1.key1}}"
+            # value: "something-{{map2.key1}} <--- this will be resolved at this step
+            generator.resolve_interpolations()
+            generator.resolve_interpolations()
 
         # Filter data before interpolation validation
         if len(filters) > 0:
