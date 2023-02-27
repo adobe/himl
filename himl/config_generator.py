@@ -63,6 +63,7 @@ class ConfigProcessor(object):
 
         # Resolve multiple levels of interpolations:
         if not skip_interpolations:
+            print("Efficient interpolation resolution ", path)
             # Add dynamic data and resolve interpolations using dynamic data:
             generator.add_dynamic_data()
             

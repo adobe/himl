@@ -15,6 +15,7 @@ import os
 import sys
 import yaml
 from .config_generator import ConfigProcessor
+from multiprocessing import Pool
 
 logger = logging.getLogger(__name__)
 
@@ -76,10 +77,15 @@ def merge_configs(directories, levels, output_dir):
     :param output_dir: where to save the generated configs
     """
     config_processor = ConfigProcessor()
-    merge_logic(config_processor, directories, levels, output_dir)
+    thread_config = []
+    for path in directories:
+        thread_config.append([config_processor,path,levels, output_dir])
+    
+    with Pool(4) as p:
+        p.map(merge_logic, thread_config)
 
 
-def merge_logic(config_processor, directories, levels, output_dir):
+def merge_logic(params):
     """
     Method implementing the merge config logic
     :param config_processor: the HIML config Processor
@@ -87,27 +93,35 @@ def merge_logic(config_processor, directories, levels, output_dir):
     :param levels: list of hierarchy levels to traverse
     :param output_dir: where to save the generated configs
     """
-    for path in directories:
+    config_processor = params[0]
+    path = params[1]
+    levels = params[2]
+    output_dir = params[3]
 
-        # use the HIML deep merge functionality
-        output = dict(
-            config_processor.process(path=path, output_format="yaml", print_data=False, multi_line_string=True))
+    # load the !include tag
+    Loader.add_constructor('!include', Loader.include)
 
-        # exchange the levels to which to run for with the values extracted from the yaml structure
-        level_values = [output.get(level) for level in levels]
+    # override the Yaml SafeLoader with our custom loader
+    yaml.SafeLoader = Loader
 
-        # create the publish path and all level_values except the last one
-        publish_path = os.path.join(output_dir, '') + '/'.join(level_values[:-1])
-        if not os.path.exists(publish_path):
-            os.makedirs(publish_path)
+    # for path in directories:
+    # use the HIML deep merge functionality
+    output = dict(
+        config_processor.process(path=path, output_format="yaml", print_data=False, multi_line_string=True))
+    # exchange the levels to which to run for with the values extracted from the yaml structure
+    level_values = [output.get(level) for level in levels]
 
-        # create the yaml file for output using the publish_path and last level_values element
-        filename = "{0}/{1}.yaml".format(publish_path, level_values[-1])
-        logger.info("Found input config directory: %s", path)
-        logger.info("Storing generated config to: %s", filename)
-        with open(filename, "w+") as f:
-            f.write(yaml.dump(output))
+    # create the publish path and all level_values except the last one
+    publish_path = os.path.join(output_dir, '') + '/'.join(level_values[:-1])
+    if not os.path.exists(publish_path):
+        os.makedirs(publish_path)
 
+    # create the yaml file for output using the publish_path and last level_values element
+    filename = "{0}/{1}.yaml".format(publish_path, level_values[-1])
+    logger.info("Found input config directory: %s", path)
+    logger.info("Storing generated config to: %s", filename)
+    with open(filename, "w+") as f:
+        f.write(yaml.dump(output))
 
 def is_leaf_directory(dir, leaf_directories):
     return any(dir.startswith(leaf) for leaf in leaf_directories)
