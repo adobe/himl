@@ -63,7 +63,7 @@ class ConfigProcessor(object):
 
         # Resolve multiple levels of interpolations:
         if not skip_interpolations:
-            # TODO: optimize how many types resolve_interpolations is called
+            # TODO: reduce the number of calls to resolve_interpolations
             generator.resolve_interpolations()
 
             # Resolve nested interpolations:
