@@ -63,22 +63,9 @@ class ConfigProcessor(object):
 
         # Resolve multiple levels of interpolations:
         if not skip_interpolations:
-            # Add dynamic data and resolve interpolations using dynamic data:
-            generator.add_dynamic_data()
-            
-            # Add env vars and resolve interpolations using env vars:
-            generator.resolve_env()
+            # TODO: optimize how many types resolve_interpolations is called
+            generator.resolve_interpolations()
 
-             # Add secrets and resolve interpolations using secrets:
-            if not skip_secrets:
-                default_aws_profile = self.get_default_aws_profile(generator.generated_data)
-                generator.resolve_secrets(default_aws_profile)
-                # Perform resolving in case some secrets are used in nested interpolations.
-                # Example:
-                # value1: "{{ssm.mysecret}}"
-                # value2: "something-{{value1}} <--- this will be resolved at this step
-            
-            
             # Resolve nested interpolations:
             # Example:
             # map1:
@@ -86,7 +73,24 @@ class ConfigProcessor(object):
             # map2: "{{map1.key1}}"
             # value: "something-{{map2.key1}} <--- this will be resolved at this step
             generator.resolve_interpolations()
+
+            # Add dynamic data and resolve interpolations using dynamic data:
+            generator.add_dynamic_data()
             generator.resolve_interpolations()
+
+            # Add env vars and resolve interpolations using env vars:
+            generator.resolve_env()
+            generator.resolve_interpolations()
+
+            # Add secrets and resolve interpolations using secrets:
+            if not skip_secrets:
+                default_aws_profile = self.get_default_aws_profile(generator.generated_data)
+                generator.resolve_secrets(default_aws_profile)
+                # Perform resolving in case some secrets are used in nested interpolations.
+                # Example:
+                # value1: "{{ssm.mysecret}}"
+                # value2: "something-{{value1}} <--- this will be resolved at this step
+                generator.resolve_interpolations()
 
         # Filter data before interpolation validation
         if len(filters) > 0:

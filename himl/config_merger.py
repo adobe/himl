@@ -15,7 +15,7 @@ import os
 import sys
 import yaml
 from .config_generator import ConfigProcessor
-from multiprocessing import Pool
+from multiprocessing import Pool, cpu_count
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +69,7 @@ class Loader(yaml.SafeLoader):
             raise Exception("Key not found for {0} in dictionary {1}.".format(current_key, yaml_dict))
 
 
-def merge_configs(directories, levels, output_dir):
+def merge_configs(directories, levels, output_dir, enable_parallel):
     """
     Method for running the merge configuration logic under different formats
     :param directories: list of paths for leaf directories
@@ -81,8 +81,13 @@ def merge_configs(directories, levels, output_dir):
     for path in directories:
         thread_config.append([config_processor,path,levels, output_dir])
     
-    with Pool(8) as p:
-        p.map(merge_logic, thread_config)
+    if enable_parallel:
+        logger.info("Processing config in parallel")
+        with Pool(cpu_count()) as p:
+            p.map(merge_logic, thread_config)
+    else:
+        for config in thread_config:
+            merge_logic(config)
 
 
 def merge_logic(params):
@@ -163,20 +168,15 @@ def parser_options(args):
                         help='hierarchy levels, for instance: env, region, cluster', required=True)
     parser.add_argument('--leaf-directories', dest='leaf_directories', nargs='+',
                         help='leaf directories, for instance: cluster', required=True)
+    parser.add_argument('--enable-parallel', dest='enable_parallel', default=False, action='store_true', help='Process config using multiprocessing')
     return parser.parse_args(args)
 
 
 def run(args=None):
     opts = parser_options(args)
 
-    # load the !include tag
-    Loader.add_constructor('!include', Loader.include)
-
-    # override the Yaml SafeLoader with our custom loader
-    yaml.SafeLoader = Loader
-
     # extract the list of absolute paths for leaf directories
     dirs = get_leaf_directories(opts.path, opts.leaf_directories)
 
     # merge the configs using HIML
-    merge_configs(dirs, opts.hierarchy_levels, opts.output_dir)
+    merge_configs(dirs, opts.hierarchy_levels, opts.output_dir, opts.enable_parallel)
