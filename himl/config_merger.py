@@ -64,9 +64,11 @@ class Loader(yaml.SafeLoader):
                 if isinstance(yaml_dict[current_key], dict):
                     return self.__traverse_path(path=".".join(keys), yaml_dict=yaml_dict[current_key])
                 else:
-                    raise Exception("{1}[{0}] is not traversable.".format(current_key, yaml_dict))
+                    raise Exception("{1}[{0}] is not traversable.".format(
+                        current_key, yaml_dict))
         else:
-            raise Exception("Key not found for {0} in dictionary {1}.".format(current_key, yaml_dict))
+            raise Exception("Key not found for {0} in dictionary {1}.".format(
+                current_key, yaml_dict))
 
 
 def merge_configs(directories, levels, output_dir, enable_parallel):
@@ -75,33 +77,31 @@ def merge_configs(directories, levels, output_dir, enable_parallel):
     :param directories: list of paths for leaf directories
     :param levels: list of hierarchy levels to traverse
     :param output_dir: where to save the generated configs
+    :param enable_parallel: to enable parallel config generation
     """
     config_processor = ConfigProcessor()
-    thread_config = []
+    process_config = []
     for path in directories:
-        thread_config.append([config_processor,path,levels, output_dir])
-    
+        process_config.append((config_processor, path, levels, output_dir))
+
     if enable_parallel:
         logger.info("Processing config in parallel")
         with Pool(cpu_count()) as p:
-            p.map(merge_logic, thread_config)
+            p.map(merge_logic, process_config)
     else:
-        for config in thread_config:
+        for config in process_config:
             merge_logic(config)
 
 
-def merge_logic(params):
+def merge_logic(process_params):
     """
     Method implementing the merge config logic
-    :param config_processor: the HIML config Processor
-    :param directories: list of paths for directories to run the config merge logic
-    :param levels: list of hierarchy levels to traverse
-    :param output_dir: where to save the generated configs
+    :param process_params: tuple that contains config for running the merge_logic
     """
-    config_processor = params[0]
-    path = params[1]
-    levels = params[2]
-    output_dir = params[3]
+    config_processor = process_params[0]
+    path = process_params[1]
+    levels = process_params[2]
+    output_dir = process_params[3]
 
     # load the !include tag
     Loader.add_constructor('!include', Loader.include)
@@ -128,6 +128,7 @@ def merge_logic(params):
     with open(filename, "w+") as f:
         f.write(yaml.dump(output))
 
+
 def is_leaf_directory(dir, leaf_directories):
     return any(dir.startswith(leaf) for leaf in leaf_directories)
 
@@ -135,7 +136,7 @@ def is_leaf_directory(dir, leaf_directories):
 def get_leaf_directories(src, leaf_directories):
     """
     Method for doing a deep search of directories matching either the desired
-    leaf directorie.
+    leaf directories.
     :param src: the source path to start looking from
     :return: the list of absolute paths
     """
@@ -168,7 +169,8 @@ def parser_options(args):
                         help='hierarchy levels, for instance: env, region, cluster', required=True)
     parser.add_argument('--leaf-directories', dest='leaf_directories', nargs='+',
                         help='leaf directories, for instance: cluster', required=True)
-    parser.add_argument('--enable-parallel', dest='enable_parallel', default=False, action='store_true', help='Process config using multiprocessing')
+    parser.add_argument('--enable-parallel', dest='enable_parallel', default=False,
+                        action='store_true', help='Process config using multiprocessing')
     return parser.parse_args(args)
 
 
@@ -179,4 +181,5 @@ def run(args=None):
     dirs = get_leaf_directories(opts.path, opts.leaf_directories)
 
     # merge the configs using HIML
-    merge_configs(dirs, opts.hierarchy_levels, opts.output_dir, opts.enable_parallel)
+    merge_configs(dirs, opts.hierarchy_levels,
+                  opts.output_dir, opts.enable_parallel)
