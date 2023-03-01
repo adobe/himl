@@ -15,6 +15,7 @@ import os
 import sys
 import yaml
 from .config_generator import ConfigProcessor
+from multiprocessing import Pool, cpu_count
 
 logger = logging.getLogger(__name__)
 
@@ -63,50 +64,69 @@ class Loader(yaml.SafeLoader):
                 if isinstance(yaml_dict[current_key], dict):
                     return self.__traverse_path(path=".".join(keys), yaml_dict=yaml_dict[current_key])
                 else:
-                    raise Exception("{1}[{0}] is not traversable.".format(current_key, yaml_dict))
+                    raise Exception("{1}[{0}] is not traversable.".format(
+                        current_key, yaml_dict))
         else:
-            raise Exception("Key not found for {0} in dictionary {1}.".format(current_key, yaml_dict))
+            raise Exception("Key not found for {0} in dictionary {1}.".format(
+                current_key, yaml_dict))
 
 
-def merge_configs(directories, levels, output_dir):
+def merge_configs(directories, levels, output_dir, enable_parallel):
     """
     Method for running the merge configuration logic under different formats
     :param directories: list of paths for leaf directories
     :param levels: list of hierarchy levels to traverse
     :param output_dir: where to save the generated configs
+    :param enable_parallel: to enable parallel config generation
     """
     config_processor = ConfigProcessor()
-    merge_logic(config_processor, directories, levels, output_dir)
+    process_config = []
+    for path in directories:
+        process_config.append((config_processor, path, levels, output_dir))
+
+    if enable_parallel:
+        logger.info("Processing config in parallel")
+        with Pool(cpu_count()) as p:
+            p.map(merge_logic, process_config)
+    else:
+        for config in process_config:
+            merge_logic(config)
 
 
-def merge_logic(config_processor, directories, levels, output_dir):
+def merge_logic(process_params):
     """
     Method implementing the merge config logic
-    :param config_processor: the HIML config Processor
-    :param directories: list of paths for directories to run the config merge logic
-    :param levels: list of hierarchy levels to traverse
-    :param output_dir: where to save the generated configs
+    :param process_params: tuple that contains config for running the merge_logic
     """
-    for path in directories:
+    config_processor = process_params[0]
+    path = process_params[1]
+    levels = process_params[2]
+    output_dir = process_params[3]
 
-        # use the HIML deep merge functionality
-        output = dict(
-            config_processor.process(path=path, output_format="yaml", print_data=False, multi_line_string=True))
+    # load the !include tag
+    Loader.add_constructor('!include', Loader.include)
 
-        # exchange the levels to which to run for with the values extracted from the yaml structure
-        level_values = [output.get(level) for level in levels]
+    # override the Yaml SafeLoader with our custom loader
+    yaml.SafeLoader = Loader
 
-        # create the publish path and all level_values except the last one
-        publish_path = os.path.join(output_dir, '') + '/'.join(level_values[:-1])
-        if not os.path.exists(publish_path):
-            os.makedirs(publish_path)
+    # for path in directories:
+    # use the HIML deep merge functionality
+    output = dict(
+        config_processor.process(path=path, output_format="yaml", print_data=False, multi_line_string=True))
+    # exchange the levels to which to run for with the values extracted from the yaml structure
+    level_values = [output.get(level) for level in levels]
 
-        # create the yaml file for output using the publish_path and last level_values element
-        filename = "{0}/{1}.yaml".format(publish_path, level_values[-1])
-        logger.info("Found input config directory: %s", path)
-        logger.info("Storing generated config to: %s", filename)
-        with open(filename, "w+") as f:
-            f.write(yaml.dump(output))
+    # create the publish path and all level_values except the last one
+    publish_path = os.path.join(output_dir, '') + '/'.join(level_values[:-1])
+    if not os.path.exists(publish_path):
+        os.makedirs(publish_path)
+
+    # create the yaml file for output using the publish_path and last level_values element
+    filename = "{0}/{1}.yaml".format(publish_path, level_values[-1])
+    logger.info("Found input config directory: %s", path)
+    logger.info("Storing generated config to: %s", filename)
+    with open(filename, "w+") as f:
+        f.write(yaml.dump(output))
 
 
 def is_leaf_directory(dir, leaf_directories):
@@ -116,7 +136,7 @@ def is_leaf_directory(dir, leaf_directories):
 def get_leaf_directories(src, leaf_directories):
     """
     Method for doing a deep search of directories matching either the desired
-    leaf directorie.
+    leaf directories.
     :param src: the source path to start looking from
     :return: the list of absolute paths
     """
@@ -149,20 +169,17 @@ def parser_options(args):
                         help='hierarchy levels, for instance: env, region, cluster', required=True)
     parser.add_argument('--leaf-directories', dest='leaf_directories', nargs='+',
                         help='leaf directories, for instance: cluster', required=True)
+    parser.add_argument('--enable-parallel', dest='enable_parallel', default=False,
+                        action='store_true', help='Process config using multiprocessing')
     return parser.parse_args(args)
 
 
 def run(args=None):
     opts = parser_options(args)
 
-    # load the !include tag
-    Loader.add_constructor('!include', Loader.include)
-
-    # override the Yaml SafeLoader with our custom loader
-    yaml.SafeLoader = Loader
-
     # extract the list of absolute paths for leaf directories
     dirs = get_leaf_directories(opts.path, opts.leaf_directories)
 
     # merge the configs using HIML
-    merge_configs(dirs, opts.hierarchy_levels, opts.output_dir)
+    merge_configs(dirs, opts.hierarchy_levels,
+                  opts.output_dir, opts.enable_parallel)
