@@ -263,7 +263,7 @@ class ConfigGenerator(object):
         return values
 
     def output_yaml_data(self, data):
-        return yaml.dump(data, Dumper=ConfigGenerator.yaml_dumper(), default_flow_style=False, width=200)
+        return yaml.dump(data, Dumper=ConfigGenerator.yaml_dumper(), default_flow_style=False, width=200, sort_keys=False)
 
     def yaml_to_json(self, yaml_data):
         return json.dumps(yaml.load(yaml_data, Loader=yaml.SafeLoader), indent=4)
