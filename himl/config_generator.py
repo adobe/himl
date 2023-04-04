@@ -42,7 +42,8 @@ class ConfigProcessor(object):
                 multi_line_string=False,
                 type_strategies=[(list, ["append"]), (dict, ["merge"])],
                 fallback_strategies=["override"],
-                type_conflict_strategies=["override"]):
+                type_conflict_strategies=["override"],
+                format_return=False):
 
         path = self.get_relative_path(path)
 
@@ -57,6 +58,55 @@ class ConfigProcessor(object):
         generator.generate_hierarchy()
         generator.process_hierarchy()
 
+        return self.finalize_generation(generator, filters, exclude_keys, enclosing_key, remove_enclosing_key,
+                                        output_format, print_data, output_file, skip_interpolations,
+                                        skip_interpolation_validation, skip_secrets, formatted_return=format_return)
+
+    def process_file(self, base_path,
+                     path,
+                     cwd=None,
+                     filters=(),
+                     exclude_keys=(),
+                     enclosing_key=None,
+                     remove_enclosing_key=None,
+                     output_format="yaml",
+                     print_data=False,
+                     output_file=None,
+                     skip_interpolations=False,
+                     skip_interpolation_validation=False,
+                     skip_secrets=False,
+                     multi_line_string=False,
+                     type_strategies=[(list, ["append"]), (dict, ["merge"])],
+                     fallback_strategies=["override"],
+                     type_conflict_strategies=["override"],
+                     format_return=False):
+        """
+        Process a file instead of walking through directory
+        :param base_path: Path to base/default YAML file
+        :param path: Path to YAML file that will be applied on top of base_path
+        :param format_return: Return formatted string instead of OrderedDict
+        """
+
+        path = self.get_relative_path(path)
+        base_path = self.get_relative_path(base_path)
+
+        if skip_interpolations or skip_secrets:
+            skip_interpolation_validation = True
+
+        if cwd is None:
+            cwd = os.getcwd()
+
+        generator = ConfigGenerator(cwd, base_path, multi_line_string, type_strategies, fallback_strategies,
+                                    type_conflict_strategies, skip_hierarchy_generation=True)
+        generator.process_file(path)
+
+        return self.finalize_generation(generator, filters, exclude_keys, enclosing_key, remove_enclosing_key,
+                                        output_format, print_data, output_file, skip_interpolations,
+                                        skip_interpolation_validation, skip_secrets, format_return)
+
+    def finalize_generation(self, generator, filters, exclude_keys, enclosing_key, remove_enclosing_key,
+                            output_format, print_data, output_file, skip_interpolations, skip_interpolation_validation,
+                            skip_secrets, formatted_return=False):
         # Exclude data before interpolations
         if len(exclude_keys) > 0:
             generator.exclude_keys(exclude_keys)
@@ -109,7 +159,7 @@ class ConfigProcessor(object):
 
         generator.clean_escape_characters()
 
-        if print_data or output_file:
+        if print_data or output_file or formatted_return:
             formatted_data = generator.output_data(data, output_format)
 
             if print_data:
@@ -118,6 +168,9 @@ class ConfigProcessor(object):
             if output_file:
                 with open(output_file, 'w') as f:
                     f.write(formatted_data)
+
+            if formatted_return:
+                return formatted_return
 
         return data
 
@@ -140,10 +193,12 @@ class ConfigGenerator(object):
     will contain merged data on each layer.
     """
 
-    def __init__(self, cwd, path, multi_line_string, type_strategies, fallback_strategies, type_conflict_strategies):
+    def __init__(self, cwd, path, multi_line_string, type_strategies, fallback_strategies, type_conflict_strategies,
+                 skip_hierarchy_generation=False):
         self.cwd = cwd
         self.path = path
-        self.hierarchy = self.generate_hierarchy()
+        if not skip_hierarchy_generation:
+            self.hierarchy = self.generate_hierarchy()
         self.generated_data = OrderedDict()
         self.interpolation_validator = InterpolationValidator()
         self.type_strategies = type_strategies
@@ -252,6 +307,20 @@ class ConfigGenerator(object):
                 self.merge_yamls(merged_values, yaml_content, self.type_strategies, self.fallback_strategies,
                                  self.type_conflict_strategies)
                 self.resolve_simple_interpolations(merged_values, yaml_file)
+        self.generated_data = merged_values
+
+    def process_file(self, path):
+        merged_values = OrderedDict()
+
+        base_yaml_content = self.yaml_get_content(self.path)
+        self.merge_yamls(merged_values, base_yaml_content, self.type_strategies, self.fallback_strategies,
+                         self.type_conflict_strategies)
+
+        yaml_content = self.yaml_get_content(path)
+        self.merge_yamls(merged_values, yaml_content, self.type_strategies, self.fallback_strategies,
+                         self.type_conflict_strategies)
+
+        self.resolve_simple_interpolations(merged_values, path)
         self.generated_data = merged_values
 
     def get_values_from_dir_path(self):
