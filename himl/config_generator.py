@@ -62,8 +62,8 @@ class ConfigProcessor(object):
                                         output_format, print_data, output_file, skip_interpolations,
                                         skip_interpolation_validation, skip_secrets, formatted_return=format_return)
 
-    def process_file(self, base_path,
-                     path,
+    def process_file(self, base_file_path,
+                     target_file_path,
                      cwd=None,
                      filters=(),
                      exclude_keys=(),
@@ -82,13 +82,13 @@ class ConfigProcessor(object):
                      format_return=False):
         """
         Process a file instead of walking through directory
-        :param base_path: Path to base/default YAML file
-        :param path: Path to YAML file that will be applied on top of base_path
+        :param base_file_path: Path to base/default YAML file
+        :param target_file_path: Path to YAML file that will be applied on top of base_path
         :param format_return: Return formatted string instead of OrderedDict
         """
 
-        path = self.get_relative_path(path)
-        base_path = self.get_relative_path(base_path)
+        target_file_path = self.get_relative_path(target_file_path)
+        base_file_path = self.get_relative_path(base_file_path)
 
         if skip_interpolations or skip_secrets:
             skip_interpolation_validation = True
@@ -96,9 +96,9 @@ class ConfigProcessor(object):
         if cwd is None:
             cwd = os.getcwd()
 
-        generator = ConfigGenerator(cwd, base_path, multi_line_string, type_strategies, fallback_strategies,
+        generator = ConfigGenerator(cwd, base_file_path, multi_line_string, type_strategies, fallback_strategies,
                                     type_conflict_strategies, skip_hierarchy_generation=True)
-        generator.process_file(path)
+        generator.process_file(target_file_path)
 
         return self.finalize_generation(generator, filters, exclude_keys, enclosing_key, remove_enclosing_key,
                                         output_format, print_data, output_file, skip_interpolations,
