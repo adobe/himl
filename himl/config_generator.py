@@ -40,7 +40,7 @@ class ConfigProcessor(object):
                 skip_interpolation_validation=False,
                 skip_secrets=False,
                 multi_line_string=False,
-                type_strategies=[(list, ["append"]), (dict, ["merge"])],
+                type_strategies=[(list, ["append_unique"]), (dict, ["merge"])],
                 fallback_strategies=["override"],
                 type_conflict_strategies=["override"]):
 
