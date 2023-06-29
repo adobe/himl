@@ -16,7 +16,7 @@ _install_requires = [
     'pathlib2==2.3.7.post1',
     'pyyaml==6.0',
     'boto3==1.26.163',
-    'hvac==0.11.2'
+    'hvac==1.1.1'
 ]
 
 setup(
