@@ -277,7 +277,7 @@ endpoint: "{{outputs.cluster_composition.output.value.redis_endpoint}}"
 
 ### Merge with env variables
 ```yaml
-kubeconfig_location: {{env(KUBECONFIG)}}
+kubeconfig_location: "{{env(KUBECONFIG)}}"
 ```
 
 
