@@ -12,7 +12,7 @@ with open('README.md', encoding="utf-8") as f:
 _install_requires = [
     'deepmerge==1.1.0',
     'lru_cache==0.2.3',
-    'backports.functools_lru_cache==1.6.5',
+    'backports.functools_lru_cache==1.6.6',
     'pathlib2==2.3.7.post1',
     'pyyaml==6.0.1',
     'boto3==1.28.12',
