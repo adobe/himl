@@ -16,9 +16,9 @@ if PY3:
     iteritems = lambda d: iter(d.items())
     integer_types = (int,)
     string_types = (str,)
-    primitive_types = (str, int, bool)
+    primitive_types = (str, int, float, bool)
 else:
     iteritems = lambda d: d.iteritems()
     integer_types = (int, long)
     string_types = (str, unicode)
-    primitive_types = (str, unicode, int, long, bool)
+    primitive_types = (str, unicode, int, long, float, bool)
