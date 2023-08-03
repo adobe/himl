@@ -33,7 +33,7 @@ class SSMSecretResolver(SecretResolver):
         self.default_aws_profile = default_aws_profile
 
     def supports(self, secret_type):
-        return secret_type == "ssm"
+        return "boto3" in sys.modules && secret_type == "ssm"
 
     def resolve(self, secret_type, secret_params):
         aws_profile = secret_params.get("aws_profile", self.default_aws_profile)
@@ -52,7 +52,7 @@ class S3SecretResolver(SecretResolver):
         self.default_aws_profile = default_aws_profile
 
     def supports(self, secret_type):
-        return secret_type == "s3"
+        return "boto3" in sys.modules && secret_type == "s3"
 
     def resolve(self, secret_type, secret_params):
         aws_profile = secret_params.get("aws_profile", self.default_aws_profile)
@@ -71,7 +71,7 @@ class S3SecretResolver(SecretResolver):
 
 class VaultSecretResolver(SecretResolver):
     def supports(self, secret_type):
-        return secret_type == "vault"
+        return "hvac" in sys.modules && secret_type == "vault"
 
     def resolve(self, secret_type, secret_params):
         vault = SimpleVault
@@ -106,4 +106,4 @@ class AggregatedSecretResolver(SecretResolver):
             if resolver.supports(secret_type):
                 return resolver.resolve(secret_type, secret_params)
 
-        raise Exception("Could not resolve secret type '{}' with params {}".format(secret_type, secret_params))
+        raise Exception("Could not resolve secret type '{}' with params {}. Check if you installed the required 3rd party modules.".format(secret_type, secret_params))
