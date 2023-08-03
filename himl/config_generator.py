@@ -296,6 +296,7 @@ class ConfigGenerator(object):
 
     def add_dynamic_data(self):
         if "remote_states" in self.generated_data:
+            from .remote_state import S3TerraformRemoteStateRetriever
             remote_state_retriever = S3TerraformRemoteStateRetriever()
             state_files = self.generated_data["remote_states"]
             remote_states = remote_state_retriever.get_dynamic_data(state_files)
