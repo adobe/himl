@@ -25,7 +25,7 @@ _extras_require = {
         'hvac==1.1.1',
     ],
 }
-_extras_require['extras'] = [dep for deps in _extras_require.values() for dep in deps]
+_extras_require['all'] = [dep for deps in _extras_require.values() for dep in deps]
 
 setup(
     name='himl',

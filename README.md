@@ -44,7 +44,7 @@ Idea came from puppet's hiera.
 ```sh
 pip install himl
 # or, optionally install with all extras dependencies: vault and aws interpolation support
-pip install himl[extras]
+pip install himl[all]
 # or, specify which extras dependencies you need
 pip install himl[vault,aws]
 ```
