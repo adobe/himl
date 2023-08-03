@@ -8,7 +8,23 @@ cluster_info:
   # Interpolation example
   description: "This is cluster: {{cluster}}. It is using {{cluster_info.node_type}} instance type."
   node_type: c3.2xlarge # default value, which can be overridden by each cluster
-
+cluster_metrics:
+  - id: 1
+    metric: cpu
+    value: 90
+  - id: 2
+    metric: memory
+    value: 90   
+  - id: 3
+    metric: disk
+    value: 90
+metrics:
+  - cpu
+  - memory
+  - disk
+myList:
+ - id1
+ - id4
 # Fetching the secret value at runtime, from a secrets store (in this case AWS SSM).
 # passphrase: "{{ssm.path(/key/coming/from/aws/secrets/store/manager).aws_profile(myprofile)}}"
 

@@ -10,26 +10,26 @@ with open('README.md', encoding="utf-8") as f:
     _readme = f.read()
 
 _install_requires = [
-    'deepmerge==1.0.1',
+    'deepmerge==1.1.0',
     'lru_cache==0.2.3',
-    'backports.functools_lru_cache==1.6.4',
+    'backports.functools_lru_cache==1.6.6',
     'pathlib2==2.3.7.post1',
-    'pyyaml==6.0',
+    'pyyaml==6.0.1',
 ]
 
 _extras_require = {
     'aws': [
-        'boto3==1.24.2',
+        'boto3==1.28.12',
     ],
     'vault': [
-        'hvac==0.11.2',
+        'hvac==1.1.1',
     ],
 }
 _extras_require['extras'] = [dep for deps in _extras_require.values() for dep in deps]
 
 setup(
     name='himl',
-    version="0.9.0",
+    version="0.15.0",
     description='A hierarchical config using yaml',
     long_description=_readme + '\n\n',
     long_description_content_type='text/markdown',
@@ -61,8 +61,8 @@ setup(
     ],
     packages=['himl'],
     include_package_data=True,
-    install_requires=install_requires,
-    extras_require=extras_require,
+    install_requires=_install_requires,
+    extras_require=_extras_require,
     entry_points={
         'console_scripts': [
             'himl = himl.main:run',

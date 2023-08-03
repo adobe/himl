@@ -1,4 +1,4 @@
-FROM python:3.10.4-slim@sha256:557745c5e06c874ba811efe2e002aff21b6cc405b828952fcfa16dea52d56dbb
+FROM python:3.11-slim@sha256:7ad180fdf785219c4a23124e53745fbd683bd6e23d0885e3554aff59eddbc377
 
 WORKDIR /config-merger
 
@@ -6,5 +6,5 @@ ADD . /config-merger/
 
 RUN apt-get update && apt-get install -y make curl
 
-RUN python -m pip install --upgrade pip && pip3 install .[extras]
+RUN python -m pip install --upgrade pip && pip3 install .
 RUN rm -rf /config-merger/*
