@@ -3,8 +3,9 @@
 # SPDX-License-Identifier: BSD-2-Clause
 
 from __future__ import absolute_import, division, print_function
+from functools import lru_cache
 
-import os, logging
+import os, logging, yaml
 
 from subprocess import Popen, PIPE
 
@@ -51,7 +52,7 @@ class SopsError(Exception):
                 filename,
                 exception_name,
                 exit_code,
-                message.decode("utf-8"),
+                message,
             )
         else:
             message = (
@@ -60,7 +61,7 @@ class SopsError(Exception):
                     "decrypt" if decryption else "encrypt",
                     filename,
                     exit_code,
-                    message.decode("utf-8"),
+                    message,
                 )
             )
         super(SopsError, self).__init__(message)
@@ -69,23 +70,16 @@ class SopsError(Exception):
 class Sops:
     """Utility class to perform sops CLI actions"""
 
-    @staticmethod
+    @lru_cache(maxsize=2048)
     def decrypt(
         encrypted_file,
-        secret_key=None,
         decode_output=True,
         rstrip=True,
     ):
         command = ["sops"]
         env = os.environ.copy()
-        if secret_key is None:
-            raise Exception(
-                "Error while getting secret for %s: secret key not supplied"
-                % encrypted_file
-            )
-        command.extend(["--extract", secret_key])
+
         command.extend(["--decrypt", encrypted_file])
-        print(command)
         process = Popen(
             command,
             stdin=None,
@@ -105,8 +99,18 @@ class Sops:
 
         if rstrip:
             output = output.rstrip()
-
-        return output
+        return yaml.full_load(output)
+    
+    def get_keys(self, secret_file, secret_key):
+        result = Sops.decrypt(secret_file)
+        secret_key_path = secret_key.strip("[]")
+        keys = [key.strip("'") for key in secret_key_path.split("']['")]
+        try:
+            for key in keys:
+                result = result[key]
+        except KeyError as e:
+            raise SopsError(secret_file, 128, "Encountered KeyError parsing yaml for key: %s" % secret_key, decryption=True)
+        return result
 
 
 class SimpleSops:
@@ -118,7 +122,7 @@ class SimpleSops:
             logger.info(
                 "Resolving sops secret %s from file %s", secret_key, secret_file
             )
-            return Sops.decrypt(encrypted_file=secret_file, secret_key=secret_key)
+            return Sops().get_keys(secret_file=secret_file, secret_key=secret_key)
         except SopsError as e:
             raise Exception(
                 "Error while trying to read sops value for file %s, key: %s - %s"
