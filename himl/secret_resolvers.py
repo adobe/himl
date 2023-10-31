@@ -13,6 +13,7 @@ import os
 from .simplessm import SimpleSSM
 from .simples3 import SimpleS3
 from .simplevault import SimpleVault
+from .simplesops import SimpleSops
 
 
 class SecretResolver:
@@ -68,6 +69,14 @@ class S3SecretResolver(SecretResolver):
         s3 = SimpleS3(aws_profile, region_name)
         return s3.get(bucket, path, base64Encode)
 
+class SopsSecretResolver(SecretResolver):
+    def supports(self, secret_type):
+        return secret_type == "sops"
+    
+    def resolve(self, secret_type, secret_params):
+        file = self.get_param_or_exception("secret_file", secret_params)
+        sops = SimpleSops()
+        return sops.get(secret_file=file, secret_key=secret_params.get("secret_key"))
 
 class VaultSecretResolver(SecretResolver):
     def supports(self, secret_type):
@@ -96,7 +105,7 @@ class VaultSecretResolver(SecretResolver):
 class AggregatedSecretResolver(SecretResolver):
     def __init__(self, default_aws_profile=None):
         self.secret_resolvers = (SSMSecretResolver(default_aws_profile), S3SecretResolver(default_aws_profile),
-                                 VaultSecretResolver())
+                                 VaultSecretResolver(), SopsSecretResolver())
 
     def supports(self, secret_type):
         return any([resolver.supports(secret_type) for resolver in self.secret_resolvers])
