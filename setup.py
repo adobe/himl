@@ -19,10 +19,10 @@ _install_requires = [
 
 _extras_require = {
     'aws': [
-        'boto3==1.28.12',
+        'boto3==1.28.44',
     ],
     'vault': [
-        'hvac==1.1.1',
+        'hvac==1.2.1',
     ],
 }
 _extras_require['all'] = [dep for deps in _extras_require.values() for dep in deps]
