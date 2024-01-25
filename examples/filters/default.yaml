@@ -1,0 +1,67 @@
+env: default
+region: default
+cluster: default
+
+cluster_info:
+  name: default # this will be overridden by the inner cluster.yaml file
+
+  # Interpolation example
+  description: "This is cluster: {{cluster}}. It is using {{cluster_info.node_type}} instance type."
+  node_type: c3.2xlarge # default value, which can be overridden by each cluster
+cluster_metrics:
+  - id: 1
+    metric: cpu
+    value: 90
+  - id: 2
+    metric: memory
+    value: 90
+  - id: 3
+    metric: disk
+    value: 90
+metrics:
+  - cpu
+  - memory
+  - disk
+myList:
+ - id1
+ - id4
+# Fetching the secret value at runtime, from a secrets store (in this case AWS SSM).
+# passphrase: "{{ssm.path(/key/coming/from/aws/secrets/store/manager).aws_profile(myprofile)}}"
+
+# Fetching the value at runtime from S3
+# my_secret: "{{s3.bucket(my-bucket).path(path/to/file.txt).base64encode(true).aws_profile(myprofile)}}"
+
+
+_schema:
+  # Keep _schema key for all outputs
+  # - level: region
+  #   keys:
+  #     values:
+  #     - "_schema"
+
+  - level: cluster
+    regex: "cluster.*"
+    keys:
+      values:
+      - persisted_key
+      # - persisted_key_referenced
+      # - persisted_key_to_drop
+      # - persisted_key_to_drop2
+      # - cluster_persisted_object
+      # - cluster_persisted_list
+
+  - level: cluster
+    value: cluster1
+    keys:
+      values:
+        - testkey
+        - home
+        - cluster_persisted_key
+
+  - level: cluster
+    value: cluster2
+    keys:
+      values:
+        - metrics
+        - myList
+      regex: ".*persisted.*"

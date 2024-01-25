@@ -37,8 +37,8 @@ class ConfigRunner(object):
             opts.print_data = True
 
         config_processor = ConfigProcessor()
-                                 
-        config_processor.process(cwd, opts.path, filters, excluded_keys, opts.enclosing_key, opts.remove_enclosing_key,
+
+        config_processor.process(cwd, opts.path, filters, filter_config, excluded_keys, opts.enclosing_key, opts.remove_enclosing_key,
                                  opts.output_format, opts.print_data, opts.output_file, opts.skip_interpolation_resolving,
                                  opts.skip_interpolation_validation, opts.skip_secrets, opts.multi_line_string,
                                  type_strategies= [(list, [opts.merge_list_strategy.value]), (dict, ["merge"])] )

@@ -343,6 +343,51 @@ Leveraging HIML, the config-merger script loads the configs tree structure and d
 
 Under each level, there is a mandatory "level key" that is used by config-merger for computing the end result. This key should be present in one of the files under each level. (eg. env.yaml under env).
 
+### Output filtering schema
+
+Some configs that are specified in the higher levels of the directory tree might not be needed in the end (leaf) result. For this reason, the config-merger script supports a filtering schema that can be specified via the `--filter-schema-key` parameter. This property must be present in the config and contains rules for removing root level keys from the output. The rules are applied for specified levels (explicit value or regex) of the config tree and will keep the keys that match the list or a regex pattern.
+
+
+```yaml
+# intermediate config after hierarchical merge
+env: dev
+cluster: cluster1
+region: us-east-1
+key1: persisted
+key2: dropped
+keep_1: persisted
+tags:
+  cost_center: 123
+_schema:
+- level: env
+  value: dev
+  keys:
+    values:
+    - key1
+    regex: "keep_.*"
+- level: cluster
+  value: cluster1
+  keys:
+    values:
+    - tags
+```
+
+Build the output with filtering:
+```sh
+himl-config-merger examples/filters --output-dir merged_output --levels env region cluster --leaf-directories cluster --filter-schema-key _schema
+```
+
+```yaml
+# output after filtering
+env: dev
+cluster: cluster1
+region: us-east-1
+key1: persisted
+keep_1: persisted
+tags:
+  cost_center: 123
+```
+
 ### Extra merger features
 
 Apart from the standard features found in the `PyYaml` library, the `himl-config-merger` component also implements a custom YAML tag called `!include`.
