@@ -32,15 +32,14 @@ myList:
 # my_secret: "{{s3.bucket(my-bucket).path(path/to/file.txt).base64encode(true).aws_profile(myprofile)}}"
 
 
-_schema:
-  # Keep _schema key for all outputs
-  # - level: region
-  #   keys:
+_filters:
+  # Keep _filters key for all outputs. No selector matches all outputs by default.
+  # - keys:
   #     values:
-  #     - "_schema"
+  #     - "_filters"
 
-  - level: cluster
-    regex: "cluster.*"
+  - selector:
+      cluster: "cluster.*"
     keys:
       values:
       - persisted_key
@@ -50,16 +49,16 @@ _schema:
       # - cluster_persisted_object
       # - cluster_persisted_list
 
-  - level: cluster
-    value: cluster1
+  - selector:
+      cluster: cluster1
     keys:
       values:
         - testkey
         - home
         - cluster_persisted_key
 
-  - level: cluster
-    value: cluster2
+  - selector:
+      cluster: cluster2
     keys:
       values:
         - metrics

@@ -281,7 +281,7 @@ kubeconfig_location: "{{env(KUBECONFIG)}}"
 ```
 
 
-## himl config merger
+## himl-config-merger
 
 The `himl-config-merger` script, contains logic of merging a hierarchical config directory and creating the end result YAML files.
 
@@ -343,9 +343,9 @@ Leveraging HIML, the config-merger script loads the configs tree structure and d
 
 Under each level, there is a mandatory "level key" that is used by config-merger for computing the end result. This key should be present in one of the files under each level. (eg. env.yaml under env).
 
-### Output filtering schema
+### Output filtering
 
-Some configs that are specified in the higher levels of the directory tree might not be needed in the end (leaf) result. For this reason, the config-merger script supports a filtering schema that can be specified via the `--filter-schema-key` parameter. This property must be present in the config and contains rules for removing root level keys from the output. The rules are applied for specified levels (explicit value or regex) of the config tree and will keep the keys that match the list or a regex pattern.
+Some configs that are specified in the higher levels of the directory tree might not be needed in the end (leaf) result. For this reason, the config-merger script can apply a set of filter rules that are specified via the `--filter-rules-key` parameter. This property must be present in the config and contains rules for removing root level keys from the output. The filter is applied if the selector object matches a subset of the output keys and will keep the keys specified in the `values` list or the keys that match the `regex` pattern.
 
 
 ```yaml
@@ -358,15 +358,16 @@ key2: dropped
 keep_1: persisted
 tags:
   cost_center: 123
-_schema:
-- level: env
-  value: dev
+_filters:
+- selector:
+    env: "dev"
   keys:
     values:
     - key1
     regex: "keep_.*"
-- level: cluster
-  value: cluster1
+- selector:
+    cluster:
+      regex: "cluster1"
   keys:
     values:
     - tags
@@ -374,7 +375,7 @@ _schema:
 
 Build the output with filtering:
 ```sh
-himl-config-merger examples/filters --output-dir merged_output --levels env region cluster --leaf-directories cluster --filter-schema-key _schema
+himl-config-merger examples/filters --output-dir merged_output --levels env region cluster --leaf-directories cluster --filter-rules-key _filters
 ```
 
 ```yaml

@@ -16,7 +16,7 @@ import sys
 import yaml
 from .config_generator import ConfigProcessor
 from multiprocessing import Pool, cpu_count
-from .schema_filters import Schema
+from .filter_rules import FilterRules
 logger = logging.getLogger(__name__)
 
 
@@ -71,7 +71,7 @@ class Loader(yaml.SafeLoader):
                 current_key, yaml_dict))
 
 
-def merge_configs(directories, levels, output_dir, enable_parallel, filter_schema):
+def merge_configs(directories, levels, output_dir, enable_parallel, filter_rules):
     """
     Method for running the merge configuration logic under different formats
     :param directories: list of paths for leaf directories
@@ -82,7 +82,7 @@ def merge_configs(directories, levels, output_dir, enable_parallel, filter_schem
     config_processor = ConfigProcessor()
     process_config = []
     for path in directories:
-        process_config.append((config_processor, path, levels, output_dir, filter_schema))
+        process_config.append((config_processor, path, levels, output_dir, filter_rules))
 
     if enable_parallel:
         logger.info("Processing config in parallel")
@@ -102,7 +102,7 @@ def merge_logic(process_params):
     path = process_params[1]
     levels = process_params[2]
     output_dir = process_params[3]
-    filter_schema = process_params[4]
+    filter_rules = process_params[4]
 
     # load the !include tag
     Loader.add_constructor('!include', Loader.include)
@@ -122,11 +122,11 @@ def merge_logic(process_params):
     if not os.path.exists(publish_path):
         os.makedirs(publish_path)
 
-    if filter_schema:
-        if filter_schema not in output:
-            raise Exception("Filter schema key not found in config")
-        schema = Schema(output[filter_schema], levels)
-        schema.filter(output)
+    if filter_rules:
+        if filter_rules not in output:
+            raise Exception("Filter rule key '{}' not found in config".format(filter_rules))
+        filter = FilterRules(output[filter_rules], levels)
+        filter.run(output)
 
     # create the yaml file for output using the publish_path and last level_values element
     filename = "{0}/{1}.yaml".format(publish_path, level_values[-1])
@@ -178,8 +178,8 @@ def parser_options(args):
                         help='leaf directories, for instance: cluster', required=True)
     parser.add_argument('--enable-parallel', dest='enable_parallel', default=False,
                         action='store_true', help='Process config using multiprocessing')
-    parser.add_argument('--filter-schema-key', dest='filter_schema', default=None, type=str,
-                        help='keep these keys from the generated data, based on the configured schema key')
+    parser.add_argument('--filter-rules-key', dest='filter_rules', default=None, type=str,
+                        help='keep these keys from the generated data, based on the configured filter key')
     return parser.parse_args(args)
 
 
@@ -191,4 +191,4 @@ def run(args=None):
 
     # merge the configs using HIML
     merge_configs(dirs, opts.hierarchy_levels,
-                  opts.output_dir, opts.enable_parallel, opts.filter_schema)
+                  opts.output_dir, opts.enable_parallel, opts.filter_rules)
