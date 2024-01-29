@@ -388,6 +388,10 @@ keep_1: persisted
 tags:
   cost_center: 123
 ```
+#### Filtering limitations
+
+Rule selectors and keys filtering only works at the root level of the config. It is not possible to filter nested keys.
+
 
 ### Extra merger features
 
