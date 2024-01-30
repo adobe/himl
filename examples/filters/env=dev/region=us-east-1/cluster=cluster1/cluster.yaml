@@ -1,0 +1,21 @@
+cluster: cluster1
+
+testkey: |-
+  # Set to true to log user information returned from LDAP
+    verbose_logging = true
+
+    [[servers]]
+    # Ldap server host
+    host = "someaddress"
+
+    # Default port is 389 or 636 if use_ssl = true
+    port = 389
+
+    start_tls = true
+
+cluster_persisted_key: this object will be persisted
+cluster_filtered_key: this object will be filtered out
+cluster_persisted_list: "{{ myList }}"
+cluster_persisted_object:
+  cluster_info: "{{ cluster_info }}"
+  cluster_list: "{{ myList }}"

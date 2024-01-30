@@ -281,7 +281,7 @@ kubeconfig_location: "{{env(KUBECONFIG)}}"
 ```
 
 
-## himl config merger
+## himl-config-merger
 
 The `himl-config-merger` script, contains logic of merging a hierarchical config directory and creating the end result YAML files.
 
@@ -342,6 +342,56 @@ merged_output
 Leveraging HIML, the config-merger script loads the configs tree structure and deep-merges all keys from all YAML files found from a root path to an edge. For each leaf directory, a file will be created under `--output-dir`.
 
 Under each level, there is a mandatory "level key" that is used by config-merger for computing the end result. This key should be present in one of the files under each level. (eg. env.yaml under env).
+
+### Output filtering
+
+Some configs that are specified in the higher levels of the directory tree might not be needed in the end (leaf) result. For this reason, the config-merger script can apply a set of filter rules that are specified via the `--filter-rules-key` parameter. This property must be present in the config and contains rules for removing root level keys from the output. The filter is applied if the selector object matches a subset of the output keys and will keep the keys specified in the `values` list or the keys that match the `regex` pattern.
+
+
+```yaml
+# intermediate config after hierarchical merge
+env: dev
+cluster: cluster1
+region: us-east-1
+key1: persisted
+key2: dropped
+keep_1: persisted
+tags:
+  cost_center: 123
+_filters:
+- selector:
+    env: "dev"
+  keys:
+    values:
+    - key1
+    regex: "keep_.*"
+- selector:
+    cluster:
+      regex: "cluster1"
+  keys:
+    values:
+    - tags
+```
+
+Build the output with filtering:
+```sh
+himl-config-merger examples/filters --output-dir merged_output --levels env region cluster --leaf-directories cluster --filter-rules-key _filters
+```
+
+```yaml
+# output after filtering
+env: dev
+cluster: cluster1
+region: us-east-1
+key1: persisted
+keep_1: persisted
+tags:
+  cost_center: 123
+```
+#### Filtering limitations
+
+Rule selectors and keys filtering only works at the root level of the config. It is not possible to filter nested keys.
+
 
 ### Extra merger features
 
