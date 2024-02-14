@@ -1,0 +1,2 @@
+cluster: cluster1
+home: "{{env(HOME)}}"

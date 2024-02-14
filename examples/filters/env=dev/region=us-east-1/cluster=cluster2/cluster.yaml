@@ -1,0 +1,23 @@
+cluster: cluster2
+cluster_metrics:
+  - id: 1
+    metric: cpu
+    value: 95
+  - id: 2
+    metric: memory
+    value: 95
+  - id: 3
+    metric: disk
+    remove: True
+  - metric: exec
+    value: 5
+metrics:
+  - cpu
+  - exec
+myList:
+ - id1
+ - id2
+ - id3
+persisted_key: this object will be persisted
+dropped_key: this object will be dropped
+another_persisted_key: this object will also be persisted

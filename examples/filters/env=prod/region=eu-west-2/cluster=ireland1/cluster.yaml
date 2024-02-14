@@ -1,0 +1,3 @@
+cluster: ireland1
+
+file: "{{cwd}}/test.txt"
