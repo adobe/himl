@@ -21,7 +21,7 @@ _install_requires = [
 
 setup(
     name='himl',
-    version="0.15.1",
+    version="0.15.2",
     description='A hierarchical config using yaml',
     long_description=_readme + '\n\n',
     long_description_content_type='text/markdown',

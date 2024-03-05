@@ -76,7 +76,7 @@ class ConfigRunner(object):
         parser.add_argument('--list-merge-strategy', dest='merge_list_strategy', type=ListMergeStrategy, choices=list(ListMergeStrategy),
                             default='append',
                             help='override default merge strategy for list')
-        parser.add_argument('--version', action='version', version='%(prog)s v{version}'.format(version="0.15.1"),
+        parser.add_argument('--version', action='version', version='%(prog)s v{version}'.format(version="0.15.2"),
                             help='print himl version')
         return parser
 
