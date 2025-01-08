@@ -1,6 +1,3 @@
-import os
-import sys
-
 try:
     from setuptools import setup
 except ImportError:
@@ -13,10 +10,9 @@ _install_requires = [
     'deepmerge==1.1.1',
     'lru_cache==0.2.3',
     'backports.functools_lru_cache==1.6.6',
-    'pathlib2==2.3.7.post1',
-    'pyyaml==6.0.2',
-    'boto3==1.35.94',
-    'hvac==2.3.0'
+    'pyyaml~=6.0.2',
+    'boto3~=1.35.94',
+    'hvac~=2.3.0'
 ]
 
 setup(
@@ -37,14 +33,13 @@ setup(
         'License :: OSI Approved :: Apache Software License',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.4',
-        'Programming Language :: Python :: 3.5',
-        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
         'Programming Language :: Python :: Implementation :: CPython',
         'Programming Language :: Python :: Implementation :: PyPy',
         'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
