@@ -12,7 +12,8 @@ _install_requires = [
     'backports.functools_lru_cache==1.6.6',
     'pyyaml~=6.0.2',
     'boto3~=1.35.94',
-    'hvac~=2.3.0'
+    'hvac~=2.3.0',
+    'pathlib2'
 ]
 
 setup(
