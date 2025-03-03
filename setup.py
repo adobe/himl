@@ -7,7 +7,7 @@ with open('README.md', encoding="utf-8") as f:
     _readme = f.read()
 
 _install_requires = [
-    'deepmerge==1.1.1',
+    'deepmerge==2.0',
     'lru_cache==0.2.3',
     'backports.functools_lru_cache==1.6.6',
     'pyyaml~=6.0.2',
