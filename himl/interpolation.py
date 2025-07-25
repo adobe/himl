@@ -201,6 +201,8 @@ class FromDictInjector(object):
 
     def __init__(self):
         self.results = {}
+        # Cache for parsed data structures to avoid redundant parsing
+        self._parse_cache = {}
 
     def resolve(self, line, data):
         """
@@ -209,8 +211,16 @@ class FromDictInjector(object):
         :return: dev
         """
 
-        self.parse_leaves(data, "")
-        for key, value in iteritems(self.results):
+        # Use cached results if available, otherwise parse and cache
+        data_id = id(data)
+        if data_id not in self._parse_cache:
+            self._parse_cache[data_id] = {}
+            self._parse_leaves_cached(data, "", self._parse_cache[data_id])
+        
+        # Use cached results instead of rebuilding
+        cached_results = self._parse_cache[data_id]
+        
+        for key, value in iteritems(cached_results):
             placeholder = "{{" + key + "}}"
             if placeholder not in line:
                 continue
@@ -220,7 +230,22 @@ class FromDictInjector(object):
                 line = line.replace(placeholder, value)
         return line
 
+    def _parse_leaves_cached(self, data, partial_key, cache_dict):
+        """Optimized version that populates cache dictionary directly"""
+        if isinstance(data, primitive_types):
+            cache_dict[partial_key] = data
+            return
+        if isinstance(data, dict):
+            for key in data:
+                value = data[key]
+                new_key = partial_key
+                if new_key:
+                    new_key += "."
+                new_key += key
+                self._parse_leaves_cached(value, new_key, cache_dict)
+
     def parse_leaves(self, data, partial_key):
+        """Legacy method maintained for compatibility"""
         if isinstance(data, primitive_types):
             self.results[partial_key] = data
             return
@@ -290,4 +315,3 @@ class FullBlobInjector(object):
         line = line[3:-3]
 
         return line
-
