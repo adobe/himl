@@ -22,6 +22,9 @@ from .interpolation import InterpolationResolver, EscapingResolver, Interpolatio
 from .python_compat import iteritems, primitive_types, PY3
 from .remote_state import S3TerraformRemoteStateRetriever
 
+logging.basicConfig()
+logging.root.setLevel(logging.INFO)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -116,7 +119,6 @@ class ConfigProcessor(object):
                 print(formatted_data)
 
             if output_file:
-                logger.info("Writing output to {}".format(output_file))
                 with open(output_file, 'w') as f:
                     f.write(formatted_data)
 

@@ -17,8 +17,11 @@ import yaml
 from .config_generator import ConfigProcessor
 from multiprocessing import Pool, cpu_count
 from .filter_rules import FilterRules
-logger = logging.getLogger(__name__)
 
+logging.basicConfig()
+logging.root.setLevel(logging.INFO)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class Loader(yaml.SafeLoader):
     """
@@ -86,7 +89,7 @@ def merge_configs(directories, levels, output_dir, enable_parallel, filter_rules
 
     if enable_parallel:
         logger.info("Processing config in parallel")
-        with Pool(cpu_count()) as p:
+        with Pool(4) as p:
             p.map(merge_logic, process_config)
     else:
         for config in process_config:
@@ -133,7 +136,6 @@ def merge_logic(process_params):
     logger.info("Found input config directory: %s", path)
     logger.info("Storing generated config to: %s", filename)
     with open(filename, "w+") as f:
-        logger.info("Writing output to {}".format(filename))
         f.write(yaml.dump(output))
 
 
