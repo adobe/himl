@@ -89,7 +89,7 @@ def merge_configs(directories, levels, output_dir, enable_parallel, filter_rules
 
     if enable_parallel:
         logger.info("Processing config in parallel")
-        with Pool(8) as p:
+        with Pool(cpu_count()) as p:
             p.map(merge_logic, process_config)
     else:
         for config in process_config:
