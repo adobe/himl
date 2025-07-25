@@ -9,28 +9,71 @@
 # governing permissions and limitations under the License.
 
 import re
+from functools import lru_cache
 
 from .inject_env import EnvVarInjector
 from .inject_secrets import SecretInjector
 from .python_compat import iteritems, string_types, primitive_types
 
+# Pre-compile regex patterns for performance
+_INTERPOLATION_PATTERN = re.compile(r'\{\{[^`].*?[^`]\}\}')
+_ESCAPED_PATTERN = re.compile(r'\{\{`.*?`\}\}')
+_FULL_INTERPOLATION_PATTERN = re.compile(r'^\{\{[^`].*?[^`]\}\}$')
+_FULLY_ESCAPED_PATTERN = re.compile(r'^\{\{`.*?`\}\}$')
 
+
+# Cached internal functions that only handle strings
+@lru_cache(maxsize=10000)
+def _is_interpolation_cached(value):
+    """Internal cached function - only for strings"""
+    return bool(_INTERPOLATION_PATTERN.search(value)) and not bool(_ESCAPED_PATTERN.search(value))
+
+
+@lru_cache(maxsize=10000)
+def _is_escaped_interpolation_cached(value):
+    """Internal cached function - only for strings"""
+    return bool(_ESCAPED_PATTERN.search(value))
+
+
+@lru_cache(maxsize=10000)
+def _is_fully_escaped_interpolation_cached(value):
+    """Internal cached function - only for strings"""
+    return bool(_FULLY_ESCAPED_PATTERN.match(value))
+
+
+@lru_cache(maxsize=10000)
+def _is_full_interpolation_cached(value):
+    """Internal cached function - only for strings"""
+    return bool(_FULL_INTERPOLATION_PATTERN.match(value)) and not _is_fully_escaped_interpolation_cached(value)
+
+
+# Public functions with type safety
 def is_interpolation(value):
-    return isinstance(value, string_types) and '{{' in value and '}}' in value \
-           and not is_escaped_interpolation(value)
+    """Optimized interpolation detection with regex and caching"""
+    if not isinstance(value, string_types):
+        return False
+    return _is_interpolation_cached(value)
 
 
 def is_escaped_interpolation(value):
-    return isinstance(value, string_types) and '{{`' in value and '`}}' in value
+    """Optimized escaped interpolation detection with regex and caching"""
+    if not isinstance(value, string_types):
+        return False
+    return _is_escaped_interpolation_cached(value)
 
 
 def is_fully_escaped_interpolation(value):
-    return isinstance(value, string_types) and value.startswith('{{`') and value.endswith('`}}')
+    """Optimized fully escaped interpolation detection with regex and caching"""
+    if not isinstance(value, string_types):
+        return False
+    return _is_fully_escaped_interpolation_cached(value)
 
 
 def is_full_interpolation(value):
-    return is_interpolation(value) and value.startswith('{{') and value.endswith('}}') \
-           and not is_fully_escaped_interpolation(value)
+    """Optimized full interpolation detection with regex and caching"""
+    if not isinstance(value, string_types):
+        return False
+    return _is_full_interpolation_cached(value)
 
 
 def remove_white_spaces(value):
