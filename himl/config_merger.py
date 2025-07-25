@@ -133,6 +133,7 @@ def merge_logic(process_params):
     logger.info("Found input config directory: %s", path)
     logger.info("Storing generated config to: %s", filename)
     with open(filename, "w+") as f:
+        logger.info("Writing output to {}".format(filename))
         f.write(yaml.dump(output))
 
 

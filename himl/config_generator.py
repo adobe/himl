@@ -116,6 +116,7 @@ class ConfigProcessor(object):
                 print(formatted_data)
 
             if output_file:
+                logger.info("Writing output to {}".format(output_file))
                 with open(output_file, 'w') as f:
                     f.write(formatted_data)
 
