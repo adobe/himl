@@ -13,12 +13,13 @@ _install_requires = [
     'pyyaml~=6.0.2',
     'pathlib2~=2.3.7',
     'boto3~=1.35.94',
-    'hvac~=2.3.0'
+    'hvac~=2.3.0',
+    'setuptools~=44.0.0'
 ]
 
 setup(
     name='himl',
-    version="0.16.2",
+    version="0.16.3",
     description='A hierarchical config using yaml',
     long_description=_readme + '\n\n',
     long_description_content_type='text/markdown',
