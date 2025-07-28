@@ -13,8 +13,7 @@ _install_requires = [
     'pyyaml~=6.0.2',
     'pathlib2~=2.3.7',
     'boto3~=1.39.14',
-    'hvac~=2.3.0',
-    'setuptools~=44.0.0'
+    'hvac~=2.3.0'
 ]
 
 setup(
