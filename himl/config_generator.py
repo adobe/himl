@@ -22,6 +22,9 @@ from .interpolation import InterpolationResolver, EscapingResolver, Interpolatio
 from .python_compat import iteritems, primitive_types, PY3
 from .remote_state import S3TerraformRemoteStateRetriever
 
+logging.basicConfig()
+logging.root.setLevel(logging.INFO)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
