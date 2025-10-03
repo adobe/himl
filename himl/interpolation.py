@@ -9,28 +9,71 @@
 # governing permissions and limitations under the License.
 
 import re
+from functools import lru_cache
 
 from .inject_env import EnvVarInjector
 from .inject_secrets import SecretInjector
 from .python_compat import iteritems, string_types, primitive_types
 
+# Pre-compile regex patterns for performance
+_INTERPOLATION_PATTERN = re.compile(r'\{\{[^`].*?[^`]\}\}')
+_ESCAPED_PATTERN = re.compile(r'\{\{`.*?`\}\}')
+_FULL_INTERPOLATION_PATTERN = re.compile(r'^\{\{[^`].*?[^`]\}\}$')
+_FULLY_ESCAPED_PATTERN = re.compile(r'^\{\{`.*?`\}\}$')
 
+
+# Cached internal functions that only handle strings
+@lru_cache(maxsize=10000)
+def _is_interpolation_cached(value):
+    """Internal cached function - only for strings"""
+    return bool(_INTERPOLATION_PATTERN.search(value)) and not bool(_ESCAPED_PATTERN.search(value))
+
+
+@lru_cache(maxsize=10000)
+def _is_escaped_interpolation_cached(value):
+    """Internal cached function - only for strings"""
+    return bool(_ESCAPED_PATTERN.search(value))
+
+
+@lru_cache(maxsize=10000)
+def _is_fully_escaped_interpolation_cached(value):
+    """Internal cached function - only for strings"""
+    return bool(_FULLY_ESCAPED_PATTERN.match(value))
+
+
+@lru_cache(maxsize=10000)
+def _is_full_interpolation_cached(value):
+    """Internal cached function - only for strings"""
+    return bool(_FULL_INTERPOLATION_PATTERN.match(value)) and not _is_fully_escaped_interpolation_cached(value)
+
+
+# Public functions with type safety
 def is_interpolation(value):
-    return isinstance(value, string_types) and '{{' in value and '}}' in value \
-           and not is_escaped_interpolation(value)
+    """Optimized interpolation detection with regex and caching"""
+    if not isinstance(value, string_types):
+        return False
+    return _is_interpolation_cached(value)
 
 
 def is_escaped_interpolation(value):
-    return isinstance(value, string_types) and '{{`' in value and '`}}' in value
+    """Optimized escaped interpolation detection with regex and caching"""
+    if not isinstance(value, string_types):
+        return False
+    return _is_escaped_interpolation_cached(value)
 
 
 def is_fully_escaped_interpolation(value):
-    return isinstance(value, string_types) and value.startswith('{{`') and value.endswith('`}}')
+    """Optimized fully escaped interpolation detection with regex and caching"""
+    if not isinstance(value, string_types):
+        return False
+    return _is_fully_escaped_interpolation_cached(value)
 
 
 def is_full_interpolation(value):
-    return is_interpolation(value) and value.startswith('{{') and value.endswith('}}') \
-           and not is_fully_escaped_interpolation(value)
+    """Optimized full interpolation detection with regex and caching"""
+    if not isinstance(value, string_types):
+        return False
+    return _is_full_interpolation_cached(value)
 
 
 def remove_white_spaces(value):
@@ -198,6 +241,8 @@ class FromDictInjector(object):
 
     def __init__(self):
         self.results = {}
+        # Cache for parsed data structures to avoid redundant parsing
+        self._parse_cache = {}
 
     def resolve(self, line, data):
         """
@@ -206,8 +251,16 @@ class FromDictInjector(object):
         :return: dev
         """
 
-        self.parse_leaves(data, "")
-        for key, value in iteritems(self.results):
+        # Use cached results if available, otherwise parse and cache
+        data_id = id(data)
+        if data_id not in self._parse_cache:
+            self._parse_cache[data_id] = {}
+            self._parse_leaves_cached(data, "", self._parse_cache[data_id])
+        
+        # Use cached results instead of rebuilding
+        cached_results = self._parse_cache[data_id]
+        
+        for key, value in iteritems(cached_results):
             placeholder = "{{" + key + "}}"
             if placeholder not in line:
                 continue
@@ -217,7 +270,22 @@ class FromDictInjector(object):
                 line = line.replace(placeholder, value)
         return line
 
+    def _parse_leaves_cached(self, data, partial_key, cache_dict):
+        """Optimized version that populates cache dictionary directly"""
+        if isinstance(data, primitive_types):
+            cache_dict[partial_key] = data
+            return
+        if isinstance(data, dict):
+            for key in data:
+                value = data[key]
+                new_key = partial_key
+                if new_key:
+                    new_key += "."
+                new_key += key
+                self._parse_leaves_cached(value, new_key, cache_dict)
+
     def parse_leaves(self, data, partial_key):
+        """Legacy method maintained for compatibility"""
         if isinstance(data, primitive_types):
             self.results[partial_key] = data
             return
@@ -287,4 +355,3 @@ class FullBlobInjector(object):
         line = line[3:-3]
 
         return line
-

@@ -17,8 +17,11 @@ import yaml
 from .config_generator import ConfigProcessor
 from multiprocessing import Pool, cpu_count
 from .filter_rules import FilterRules
-logger = logging.getLogger(__name__)
 
+logging.basicConfig()
+logging.root.setLevel(logging.INFO)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class Loader(yaml.SafeLoader):
     """

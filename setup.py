@@ -9,16 +9,16 @@ with open('README.md', encoding="utf-8") as f:
 _install_requires = [
     'deepmerge==1.1.1',
     'lru_cache==0.2.3',
-    'backports.functools_lru_cache==1.6.6',
+    'backports.functools_lru_cache==2.0.0',
     'pyyaml~=6.0.2',
-    'boto3~=1.35.94',
-    'hvac~=2.3.0',
-    'pathlib2'
+    'pathlib2~=2.3.7',
+    'boto3~=1.40.33',
+    'hvac~=2.3.0'
 ]
 
 setup(
     name='himl',
-    version="0.16.0",
+    version="0.16.4",
     description='A hierarchical config using yaml',
     long_description=_readme + '\n\n',
     long_description_content_type='text/markdown',
