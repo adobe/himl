@@ -143,10 +143,7 @@ class DictIterator(object):
         if isinstance(data, list):
             items = []
             for item in data:
-                if isinstance(item, list):
-                    items.extend(item)
-                else:
-                    items.append(self.loop_all_items(item, process_func))
+                items.append(self.loop_all_items(item, process_func))
             return items
         if isinstance(data, dict):
             for key in data:
