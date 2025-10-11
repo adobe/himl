@@ -10,7 +10,7 @@ _install_requires = [
     'deepmerge==1.1.1',
     'lru_cache==0.2.3',
     'backports.functools_lru_cache==2.0.0',
-    'pathlib2==2.3.7',
+    'pathlib2==2.3.7.post1',
     'pyyaml==6.0.2',
 ]
 
