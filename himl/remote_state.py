@@ -10,8 +10,10 @@
 
 import json
 
-import boto3
-
+try:
+    import boto3
+except ImportError as e:
+    raise Exception('Error while trying to read remote state, package "boto3" is required and cannot be imported: %s' % e)
 
 class S3TerraformRemoteStateRetriever:
     @staticmethod

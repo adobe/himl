@@ -10,11 +10,19 @@ _install_requires = [
     'deepmerge==1.1.1',
     'lru_cache==0.2.3',
     'backports.functools_lru_cache==2.0.0',
-    'pyyaml~=6.0.2',
-    'pathlib2~=2.3.7',
-    'boto3~=1.40.33',
-    'hvac~=2.3.0'
+    'pathlib2==2.3.7',
+    'pyyaml==6.0.2',
 ]
+
+_extras_require = {
+    's3': [
+        'boto3==1.34.6',
+    ],
+    'vault': [
+        'hvac==1.2.1',
+    ],
+}
+_extras_require['all'] = [dep for deps in _extras_require.values() for dep in deps]
 
 setup(
     name='himl',
@@ -50,6 +58,7 @@ setup(
     packages=['himl'],
     include_package_data=True,
     install_requires=_install_requires,
+    extras_require=_extras_require,
     entry_points={
         'console_scripts': [
             'himl = himl.main:run',
