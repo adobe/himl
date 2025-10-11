@@ -15,9 +15,17 @@ _install_requires = [
     'backports.functools_lru_cache==1.6.6',
     'pathlib2==2.3.7.post1',
     'pyyaml==6.0.1',
-    'boto3==1.34.6',
-    'hvac==1.2.1'
 ]
+
+_extras_require = {
+    's3': [
+        'boto3==1.34.6',
+    ],
+    'vault': [
+        'hvac==1.2.1',
+    ],
+}
+_extras_require['all'] = [dep for deps in _extras_require.values() for dep in deps]
 
 setup(
     name='himl',
@@ -54,6 +62,7 @@ setup(
     packages=['himl'],
     include_package_data=True,
     install_requires=_install_requires,
+    extras_require=_extras_require,
     entry_points={
         'console_scripts': [
             'himl = himl.main:run',
