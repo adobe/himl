@@ -10,7 +10,7 @@ A hierarchical config using yaml in Python.
 Latest version is: 0.18.0
 
 > **⚠️ Breaking Changes in v0.18.0**
-> This version includes breaking changes. See [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md) for migration instructions.
+> This version includes breaking changes:
 > - Default list merge strategy changed from `append` to `append_unique`
 > - Enhanced path validation (raises `FileNotFoundError` for non-existent paths)
 > - Empty directory validation (raises `Exception` for directories without YAML files)
