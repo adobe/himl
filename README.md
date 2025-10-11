@@ -7,7 +7,7 @@
 
 A hierarchical config using yaml in Python.
 
-Latest version is: 0.17.0
+Latest version is: 0.18.0
 
 > **⚠️ Breaking Changes in v0.18.0**
 > This version includes breaking changes. See [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md) for migration instructions.
