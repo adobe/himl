@@ -26,7 +26,7 @@ _extras_require['all'] = [dep for deps in _extras_require.values() for dep in de
 
 setup(
     name='himl',
-    version="0.16.4",
+    version="0.17.0",
     description='A hierarchical config using yaml',
     long_description=_readme + '\n\n',
     long_description_content_type='text/markdown',
