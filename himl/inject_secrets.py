@@ -14,7 +14,7 @@ from .secret_resolvers import AggregatedSecretResolver
 try:
     from functools import lru_cache
 except ImportError:
-    from backports.functools_lru_cache import lru_cache
+    from backports.functools_lru_cache import lru_cache  # type: ignore
 
 
 class SecretInjector(object):
@@ -50,14 +50,22 @@ class SecretInjector(object):
 
         secret_type = parts[0]
 
-        secret_params = {}
+        secret_params: dict = {}
         for part in parts:
             if '(' not in part:
                 secret_params[part] = None
             else:
-                key = part.split('(')[0]
-                value = part.split('(')[1].split(')')[0]
-                secret_params[key] = value
+                try:
+                    key = part.split('(')[0]
+                    value_part = part.split('(')[1]
+                    if ')' not in value_part:
+                        # Malformed interpolation - missing closing parenthesis
+                        return line
+                    value = value_part.split(')')[0]
+                    secret_params[key] = value
+                except (IndexError, ValueError):
+                    # Malformed interpolation
+                    return line
 
         if self.resolver.supports(secret_type):
             return self.resolver.resolve(secret_type, secret_params)

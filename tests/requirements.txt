@@ -1,0 +1,16 @@
+# Test dependencies for himl
+pytest>=6.0.0
+pytest-cov>=2.10.0
+pytest-mock>=3.0.0
+pytest-xdist>=2.0.0
+coverage>=5.0.0
+
+# Optional dependencies for testing specific features
+boto3>=1.34.6
+hvac>=1.2.1
+
+# Development dependencies
+black>=21.0.0
+flake8>=3.8.0
+mypy>=0.800
+types-PyYAML>=6.0.0

@@ -13,14 +13,16 @@ import os
 from .config_generator import ConfigProcessor
 from enum import Enum
 
+
 class ListMergeStrategy(Enum):
     append = 'append'
     override = 'override'
     prepend = 'prepend'
-    append_unique = 'append_unique' #WARNING: currently this strategy does not support list of dicts, only list of str
+    append_unique = 'append_unique'  # WARNING: currently this strategy does not support list of dicts, only list of str
 
     def __str__(self):
         return self.value
+
 
 class ConfigRunner(object):
 
@@ -38,10 +40,11 @@ class ConfigRunner(object):
 
         config_processor = ConfigProcessor()
 
-        config_processor.process(cwd, opts.path, filters, excluded_keys, opts.enclosing_key, opts.remove_enclosing_key,
-                                 opts.output_format, opts.print_data, opts.output_file, opts.skip_interpolation_resolving,
-                                 opts.skip_interpolation_validation, opts.skip_secrets, opts.multi_line_string,
-                                 type_strategies= [(list, [opts.merge_list_strategy.value]), (dict, ["merge"])] )
+        config_processor.process(cwd, opts.path, filters, excluded_keys, opts.enclosing_key,
+                                 opts.remove_enclosing_key, opts.output_format, opts.print_data, opts.output_file,
+                                 opts.skip_interpolation_resolving, opts.skip_interpolation_validation,
+                                 opts.skip_secrets, opts.multi_line_string,
+                                 type_strategies=[(list, [opts.merge_list_strategy.value]), (dict, ["merge"])])
 
     @staticmethod
     def get_parser(parser=None):
@@ -73,12 +76,13 @@ class ConfigRunner(object):
                             help='the working directory')
         parser.add_argument('--multi-line-string', action='store_true',
                             help='will overwrite the global yaml dumper to use block style')
-        parser.add_argument('--list-merge-strategy', dest='merge_list_strategy', type=ListMergeStrategy, choices=list(ListMergeStrategy),
-                            default='append',
+        parser.add_argument('--list-merge-strategy', dest='merge_list_strategy', type=ListMergeStrategy,
+                            choices=list(ListMergeStrategy), default='append_unique',
                             help='override default merge strategy for list')
         parser.add_argument('--version', action='version', version='%(prog)s v{version}'.format(version="0.17.0"),
                             help='print himl version')
         return parser
+
 
 def run(args=None):
     ConfigRunner().run(args)

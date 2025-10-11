@@ -10,14 +10,21 @@
 
 import json
 
+# boto3 is imported only when needed to avoid requiring it for basic himl functionality
 try:
     import boto3
-except ImportError as e:
-    raise Exception('Error while trying to read remote state, package "boto3" is required and cannot be imported: %s' % e)
+except ImportError:
+    # boto3 will be None, and we'll raise an error only when S3 functionality is used
+    boto3 = None
+
 
 class S3TerraformRemoteStateRetriever:
     @staticmethod
     def get_s3_client(bucket_name, bucket_key, boto_profile):
+        if boto3 is None:
+            raise ImportError('boto3 package is required for S3 remote state functionality. '
+                              'Install with: pip install himl[s3]')
+
         session = boto3.session.Session(profile_name=boto_profile)
         client = session.client('s3')
         try:
@@ -27,7 +34,7 @@ class S3TerraformRemoteStateRetriever:
             return []
 
     def get_dynamic_data(self, remote_states):
-        generated_data = {"outputs": {}}
+        generated_data: dict = {"outputs": {}}
         for state in remote_states:
             bucket_object = self.get_s3_client(state["s3_bucket"], state["s3_key"], state["aws_profile"])
             if "outputs" in bucket_object:

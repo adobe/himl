@@ -131,8 +131,7 @@ class EnvVarResolver(object):
     def resolve_env_vars(self, data):
         injector = EnvVarInjector()
         env_resolver = EnvVarInterpolationsResolver(injector)
-        env_resolver.resolve_interpolations(data)
-        return data
+        return env_resolver.resolve_interpolations(data)
 
 
 class DictIterator(object):
@@ -259,10 +258,9 @@ class FromDictInjector(object):
         if data_id not in self._parse_cache:
             self._parse_cache[data_id] = {}
             self._parse_leaves_cached(data, "", self._parse_cache[data_id])
-        
+
         # Use cached results instead of rebuilding
         cached_results = self._parse_cache[data_id]
-        
         for key, value in iteritems(cached_results):
             placeholder = "{{" + key + "}}"
             if placeholder not in line:

@@ -20,7 +20,6 @@ from deepmerge import Merger
 from .interpolation import InterpolationResolver, EscapingResolver, InterpolationValidator, SecretResolver, \
     DictIterator, replace_parent_working_directory, EnvVarResolver
 from .python_compat import iteritems, primitive_types, PY3
-from .remote_state import S3TerraformRemoteStateRetriever
 
 logging.basicConfig()
 logging.root.setLevel(logging.INFO)
@@ -47,71 +46,109 @@ class ConfigProcessor(object):
                 fallback_strategies=["override"],
                 type_conflict_strategies=["override"]):
 
+        # Prepare parameters and create generator
         path = self.get_relative_path(path)
+        skip_interpolation_validation = self._should_skip_interpolation_validation(
+            skip_interpolations, skip_secrets, skip_interpolation_validation)
+        cwd = cwd or os.getcwd()
 
-        if skip_interpolations or skip_secrets:
-            skip_interpolation_validation = True
+        generator = self._create_and_initialize_generator(
+            cwd, path, multi_line_string, type_strategies, fallback_strategies, type_conflict_strategies)
 
-        if cwd is None:
-            cwd = os.getcwd()
+        # Process data exclusions and interpolations
+        self._process_exclusions(generator, exclude_keys)
+        self._process_interpolations(generator, skip_interpolations, skip_secrets)
+        self._process_filters_and_validation(generator, filters, skip_interpolation_validation)
 
+        # Handle enclosing key operations and get final data
+        data = self._handle_enclosing_key_operations(generator, enclosing_key, remove_enclosing_key)
+        generator.clean_escape_characters()
+
+        # Handle output operations
+        self._handle_output_operations(generator, data, output_format, print_data, output_file)
+
+        return data
+
+    def _should_skip_interpolation_validation(self, skip_interpolations, skip_secrets, skip_interpolation_validation):
+        """Determine if interpolation validation should be skipped."""
+        return skip_interpolation_validation or skip_interpolations or skip_secrets
+
+    def _create_and_initialize_generator(self, cwd, path, multi_line_string, type_strategies,
+                                         fallback_strategies, type_conflict_strategies):
+        """Create and initialize the ConfigGenerator."""
         generator = ConfigGenerator(cwd, path, multi_line_string, type_strategies, fallback_strategies,
                                     type_conflict_strategies)
         generator.generate_hierarchy()
         generator.process_hierarchy()
+        return generator
 
-        # Exclude data before interpolations
+    def _process_exclusions(self, generator, exclude_keys):
+        """Process key exclusions before interpolations."""
         if len(exclude_keys) > 0:
             generator.exclude_keys(exclude_keys)
 
-        # Resolve multiple levels of interpolations:
+    def _process_interpolations(self, generator, skip_interpolations, skip_secrets):
+        """Process all interpolation steps."""
         if not skip_interpolations:
-            # TODO: reduce the number of calls to resolve_interpolations
-            generator.resolve_interpolations()
+            self._resolve_basic_interpolations(generator)
+            self._resolve_dynamic_interpolations(generator)
+            self._resolve_env_interpolations(generator)
+            self._resolve_secret_interpolations(generator, skip_secrets)
 
-            # Resolve nested interpolations:
+    def _resolve_basic_interpolations(self, generator):
+        """Resolve basic and nested interpolations."""
+        # TODO: reduce the number of calls to resolve_interpolations
+        generator.resolve_interpolations()
+
+        # Resolve nested interpolations:
+        # Example:
+        # map1:
+        #    key1: value1
+        # map2: "{{map1.key1}}"
+        # value: "something-{{map2.key1}} <--- this will be resolved at this step
+        generator.resolve_interpolations()
+
+    def _resolve_dynamic_interpolations(self, generator):
+        """Add dynamic data and resolve interpolations using dynamic data."""
+        generator.add_dynamic_data()
+        generator.resolve_interpolations()
+
+    def _resolve_env_interpolations(self, generator):
+        """Add env vars and resolve interpolations using env vars."""
+        generator.resolve_env()
+        generator.resolve_interpolations()
+
+    def _resolve_secret_interpolations(self, generator, skip_secrets):
+        """Add secrets and resolve interpolations using secrets."""
+        if not skip_secrets:
+            default_aws_profile = self.get_default_aws_profile(generator.generated_data)
+            generator.resolve_secrets(default_aws_profile)
+            # Perform resolving in case some secrets are used in nested interpolations.
             # Example:
-            # map1:
-            #    key1: value1
-            # map2: "{{map1.key1}}"
-            # value: "something-{{map2.key1}} <--- this will be resolved at this step
+            # value1: "{{ssm.mysecret}}"
+            # value2: "something-{{value1}} <--- this will be resolved at this step
             generator.resolve_interpolations()
 
-            # Add dynamic data and resolve interpolations using dynamic data:
-            generator.add_dynamic_data()
-            generator.resolve_interpolations()
-
-            # Add env vars and resolve interpolations using env vars:
-            generator.resolve_env()
-            generator.resolve_interpolations()
-
-            # Add secrets and resolve interpolations using secrets:
-            if not skip_secrets:
-                default_aws_profile = self.get_default_aws_profile(generator.generated_data)
-                generator.resolve_secrets(default_aws_profile)
-                # Perform resolving in case some secrets are used in nested interpolations.
-                # Example:
-                # value1: "{{ssm.mysecret}}"
-                # value2: "something-{{value1}} <--- this will be resolved at this step
-                generator.resolve_interpolations()
-
-        # Filter data before interpolation validation
+    def _process_filters_and_validation(self, generator, filters, skip_interpolation_validation):
+        """Process data filtering and interpolation validation."""
         if len(filters) > 0:
             generator.filter_data(filters)
         if not skip_interpolation_validation:
             generator.validate_interpolations()
 
+    def _handle_enclosing_key_operations(self, generator, enclosing_key, remove_enclosing_key):
+        """Handle enclosing key addition or removal operations."""
         if enclosing_key:
             logger.info("Adding enclosing key {}".format(enclosing_key))
-            data = generator.add_enclosing_key(enclosing_key)
+            return generator.add_enclosing_key(enclosing_key)
         elif remove_enclosing_key:
             logger.info("Removing enclosing key {}".format(remove_enclosing_key))
-            data = generator.remove_enclosing_key(remove_enclosing_key)
+            return generator.remove_enclosing_key(remove_enclosing_key)
         else:
-            data = generator.generated_data
+            return generator.generated_data
 
-        generator.clean_escape_characters()
-
+    def _handle_output_operations(self, generator, data, output_format, print_data, output_file):
+        """Handle printing and file output operations."""
         if print_data or output_file:
             formatted_data = generator.output_data(data, output_format)
 
@@ -121,8 +158,6 @@ class ConfigProcessor(object):
             if output_file:
                 with open(output_file, 'w') as f:
                     f.write(formatted_data)
-
-        return data
 
     @staticmethod
     def get_default_aws_profile(data):
@@ -139,7 +174,8 @@ class ConfigProcessor(object):
 class ConfigGenerator(object):
     """
     this class is used to create a config generator object which will be used to generate cluster definition files
-    from the hierarchy of directories. The class implements methods that performs deep merging on dicts so the end result
+    from the hierarchy of directories. The class implements methods that performs deep merging on dicts so the end
+    result
     will contain merged data on each layer.
     """
 
@@ -153,15 +189,14 @@ class ConfigGenerator(object):
         self.fallback_strategies = fallback_strategies
         self.type_conflict_strategies = type_conflict_strategies
         if multi_line_string is True:
-            yaml.representer.BaseRepresenter.represent_scalar = ConfigGenerator.custom_represent_scalar
+            yaml.representer.BaseRepresenter.represent_scalar = ConfigGenerator.custom_represent_scalar  # type: ignore
 
     @staticmethod
     def yaml_dumper():
         try:
             from yaml import CLoader as Loader, CDumper as Dumper
         except ImportError:
-            from yaml import Loader, Dumper
-        from yaml.representer import SafeRepresenter
+            from yaml import Loader, Dumper  # type: ignore
         _mapping_tag = yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG
 
         def dict_representer(dumper, data):
@@ -184,7 +219,8 @@ class ConfigGenerator(object):
                 style = u'|' if u'\n' in data else None
                 return dumper.represent_scalar(u'tag:yaml.org,2002:str', data, style=style)
 
-            Dumper.add_representer(unicode, unicode_representer_pipestyle)
+            # Python 3 doesn't have unicode type, use str instead
+            Dumper.add_representer(str, unicode_representer_pipestyle)
 
         return Dumper
 
@@ -193,7 +229,7 @@ class ConfigGenerator(object):
         yaml_files = []
         for yaml_file in os.listdir(path):
             if yaml_file.endswith(".yaml"):
-                yaml_files.append(os.path.join(working_directory, yaml_file))
+                yaml_files.append(os.path.join(path, yaml_file))
         return sorted(yaml_files)
 
     @staticmethod
@@ -214,7 +250,7 @@ class ConfigGenerator(object):
     @staticmethod
     def merge_yamls(values, yaml_content, type_strategies, fallback_strategies, type_conflict_strategies):
         for key, value in iteritems(yaml_content):
-            if key in values and type(values[key]) != type(value):
+            if key in values and not isinstance(values[key], type(value)) and not isinstance(value, type(values[key])):
                 raise Exception("Failed to merge key '{}', because of mismatch in type: {} vs {}"
                                 .format(key, type(values[key]), type(value)))
             if key in values and not isinstance(value, primitive_types):
@@ -239,34 +275,70 @@ class ConfigGenerator(object):
         :return: returns a list of directories in a priority order (from less specific to more specific)
         """
         hierarchy = []
+
+        # Start from the current working directory
+        current_dir = self.cwd
+        full_target_path = os.path.join(current_dir, self.path)
+
+        # If path is a file, just process the current directory
+        if os.path.isfile(full_target_path):
+            hierarchy.append(self.get_yaml_from_path(".", current_dir))
+            return hierarchy
+
+        # If path is a directory, build hierarchy by traversing path components
         full_path = pathlib2.Path(self.path)
-        for path in full_path.parts:
-            os.chdir(path)
-            new_path = os.path.relpath(os.getcwd(), self.cwd)
-            hierarchy.append(self.get_yaml_from_path(new_path, os.getcwd()))
-        os.chdir(self.cwd)
+        accumulated_path = ""
+
+        # First, add the base directory (cwd)
+        hierarchy.append(self.get_yaml_from_path(".", current_dir))
+
+        # Then traverse each directory component in the path
+        for path_part in full_path.parts:
+            if accumulated_path:
+                accumulated_path = os.path.join(accumulated_path, path_part)
+            else:
+                accumulated_path = path_part
+
+            full_dir_path = os.path.join(current_dir, accumulated_path)
+            if os.path.isdir(full_dir_path):
+                hierarchy.append(self.get_yaml_from_path(accumulated_path, full_dir_path))
+
         return hierarchy
 
     def process_hierarchy(self):
-        merged_values = OrderedDict()
+        # Check if the target path exists before processing
+        full_target_path = os.path.join(self.cwd, self.path)
+        if not os.path.exists(full_target_path):
+            raise FileNotFoundError(f"Path does not exist: {full_target_path}")
+
+        merged_values: OrderedDict = OrderedDict()
+        total_files_processed = 0
+
         for yaml_files in self.hierarchy:
             for yaml_file in yaml_files:
                 yaml_content = self.yaml_get_content(yaml_file)
                 self.merge_yamls(merged_values, yaml_content, self.type_strategies, self.fallback_strategies,
                                  self.type_conflict_strategies)
                 self.resolve_simple_interpolations(merged_values, yaml_file)
+                total_files_processed += 1
+
+        if total_files_processed == 0:
+            raise Exception("No YAML files found to process in the hierarchy")
+
         self.generated_data = merged_values
 
     def get_values_from_dir_path(self):
         values = {}
         full_path = pathlib2.Path(self.path)
-        for path in full_path.parts[1:]:
-            split_value = path.split('=')
-            values[split_value[0]] = split_value[1]
+        for path in full_path.parts:
+            if '=' in path:
+                split_value = path.split('=')
+                values[split_value[0]] = split_value[1]
         return values
 
     def output_yaml_data(self, data):
-        return yaml.dump(data, Dumper=ConfigGenerator.yaml_dumper(), default_flow_style=False, width=200, sort_keys=False)
+        return yaml.dump(data, Dumper=ConfigGenerator.yaml_dumper(), default_flow_style=False, width=200,
+                         sort_keys=False)
 
     def yaml_to_json(self, yaml_data):
         return json.dumps(yaml.load(yaml_data, Loader=yaml.SafeLoader), indent=4)
@@ -286,7 +358,7 @@ class ConfigGenerator(object):
         return self.generated_data[key]
 
     def filter_data(self, keys):
-        self.generated_data = {key: self.generated_data[key] for key in keys if key in self.generated_data}
+        self.generated_data = OrderedDict({key: self.generated_data[key] for key in keys if key in self.generated_data})
 
     def exclude_keys(self, keys):
         for key in keys:
@@ -294,7 +366,7 @@ class ConfigGenerator(object):
                 try:
                     logger.info("Excluding key %s", key)
                     del self.generated_data[key]
-                except KeyNotFound:
+                except KeyError:
                     logger.info("Excluded key %s not found or already removed", key)
 
     def add_dynamic_data(self):

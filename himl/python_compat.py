@@ -8,17 +8,14 @@
 # OF ANY KIND, either express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
 
-import sys
+# Python 3.8+ only (Python 2 is EOL)
+PY3 = True
 
-PY3 = sys.version_info >= (3, 0)
 
-if PY3:
-    iteritems = lambda d: iter(d.items())
-    integer_types = (int,)
-    string_types = (str,)
-    primitive_types = (str, int, float, bool)
-else:
-    iteritems = lambda d: d.iteritems()
-    integer_types = (int, long)
-    string_types = (str, unicode)
-    primitive_types = (str, unicode, int, long, float, bool)
+def iteritems(d):
+    return iter(d.items())
+
+
+integer_types = (int,)
+string_types = (str,)
+primitive_types = (str, int, float, bool)

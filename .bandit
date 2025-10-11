@@ -1,0 +1,13 @@
+[bandit]
+# Bandit configuration file
+exclude_dirs = ['tests', 'build', 'dist', '.git', '.tox', '.venv', '__pycache__']
+
+# Skip certain tests that may be too strict for this project
+skips = ['B101', 'B601']
+
+# B101: Test for use of assert
+# B601: Test for shell injection within Paramiko
+
+[bandit.assert_used]
+# Allow assert statements in test files
+skips = ['*test*.py', '*tests*.py']
