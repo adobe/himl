@@ -104,3 +104,6 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# setuptools_scm generated version file
+himl/_version.py

@@ -5,7 +5,9 @@
 from __future__ import absolute_import, division, print_function
 from functools import lru_cache
 
-import os, logging, yaml
+import os
+import logging
+import yaml
 
 from subprocess import Popen, PIPE
 
@@ -46,16 +48,21 @@ class SopsError(Exception):
     """Extend Exception class with sops specific information"""
 
     def __init__(self, filename, exit_code, message, decryption=True):
+        self.filename = filename
+        self.exit_code = exit_code
+        self.stderr = message
+        self.decryption = decryption
+
         if exit_code in SOPS_ERROR_CODES:
             exception_name = SOPS_ERROR_CODES[exit_code]
-            message = "error with file %s: %s exited with code %d: %s" % (
+            formatted_message = "error with file %s: %s exited with code %d: %s" % (
                 filename,
                 exception_name,
                 exit_code,
                 message,
             )
         else:
-            message = (
+            formatted_message = (
                 "could not %s file %s; Unknown sops error code: %s; message: %s"
                 % (
                     "decrypt" if decryption else "encrypt",
@@ -64,17 +71,18 @@ class SopsError(Exception):
                     message,
                 )
             )
-        super(SopsError, self).__init__(message)
+        super(SopsError, self).__init__(formatted_message)
 
 
 class Sops:
     """Utility class to perform sops CLI actions"""
 
+    @staticmethod
     @lru_cache(maxsize=2048)
     def decrypt(
-        encrypted_file,
-        decode_output=True,
-        rstrip=True,
+        encrypted_file: str,
+        decode_output: bool = True,
+        rstrip: bool = True,
     ):
         command = ["sops"]
         env = os.environ.copy()
@@ -87,20 +95,22 @@ class Sops:
             stderr=PIPE,
             env=env,
         )
-        (output, err) = process.communicate()
+        (output_bytes, err) = process.communicate()
         exit_code = process.returncode
 
         if decode_output:
             # output is binary, we want UTF-8 string
-            output = output.decode("utf-8", errors="surrogate_or_strict")
+            output: str = output_bytes.decode("utf-8", errors="surrogate_or_strict")
             # the process output is the decrypted secret; be cautious
+        else:
+            output = output_bytes.decode("utf-8", errors="surrogate_or_strict")
         if exit_code != 0:
             raise SopsError(encrypted_file, exit_code, err, decryption=True)
 
         if rstrip:
             output = output.rstrip()
         return yaml.full_load(output)
-    
+
     def get_keys(self, secret_file, secret_key):
         result = Sops.decrypt(secret_file)
         secret_key_path = secret_key.strip("[]")
@@ -108,8 +118,9 @@ class Sops:
         try:
             for key in keys:
                 result = result[key]
-        except KeyError as e:
-            raise SopsError(secret_file, 128, "Encountered KeyError parsing yaml for key: %s" % secret_key, decryption=True)
+        except KeyError:
+            raise SopsError(secret_file, 128, "Encountered KeyError parsing yaml for key: %s" % secret_key,
+                            decryption=True)
         return result
 
 

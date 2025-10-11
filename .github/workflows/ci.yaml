@@ -1,0 +1,187 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  FORCE_COLOR: 1
+
+jobs:
+  test:
+    name: Test Python ${{ matrix.python-version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ['3.9', '3.10', '3.11', '3.12', '3.13', '3.14']
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Get pip cache dir
+      id: pip-cache
+      run: |
+        echo "dir=$(pip cache dir)" >> $GITHUB_OUTPUT
+
+    - name: Cache pip dependencies
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.pip-cache.outputs.dir }}
+        key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml', '**/tests/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-${{ matrix.python-version }}-
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip setuptools wheel
+        pip install -e .[dev]
+
+    - name: Lint with flake8
+      run: |
+        # Stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # Exit-zero treats all errors as warnings
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=120 --statistics
+
+    - name: Type check with mypy
+      run: |
+        mypy himl/ --ignore-missing-imports
+
+    - name: Run tests with pytest
+      run: |
+        python -m pytest tests/ -v --tb=short --cov=himl --cov-report=xml --cov-report=term-missing --cov-fail-under=80
+
+    - name: Upload coverage to Codecov
+      if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.14'
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+  security:
+    name: Security checks
+    runs-on: ubuntu-latest
+    # Note: Using Python 3.13 for security checks until bandit supports Python 3.14
+    # See: https://github.com/PyCQA/bandit/issues with ast.Num deprecation
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'  # Use 3.13 until bandit supports 3.14
+
+    - name: Install security tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install bandit[toml] safety
+
+    - name: Run security checks with bandit
+      run: |
+        # Generate JSON report (allow failures for reporting)
+        bandit -r himl/ -f json -o bandit-report.json || echo "Bandit JSON report generation completed with issues"
+        # Run bandit with medium severity (fail on medium+ issues)
+        bandit -r himl/ --severity-level medium
+
+
+    - name: Upload security reports
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-reports
+        path: |
+          bandit-report.json
+
+  build:
+    name: Build package
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Needed for setuptools_scm
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.14'
+
+    - name: Install build dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build twine
+
+    - name: Build package
+      run: |
+        python -m build
+
+    - name: Check package
+      run: |
+        twine check dist/*
+
+    - name: Test package installation
+      run: |
+        pip install dist/*.whl
+        himl --help
+        himl-config-merger --help
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: dist-${{ github.sha }}
+        path: dist/
+        retention-days: 30
+
+  integration:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    needs: [test, build]
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.14'
+
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: dist-${{ github.sha }}
+        path: dist/
+
+    - name: Install package from wheel
+      run: |
+        python -m pip install --upgrade pip
+        pip install dist/*.whl
+
+    - name: Run integration tests
+      run: |
+        # Test CLI tools work
+        himl --help
+        himl-config-merger --help
+
+        # Test basic functionality with examples
+        if [ -d "examples" ]; then
+          cd examples
+          if [ -d "simple" ]; then
+            himl simple/production --format yaml
+          fi
+        fi

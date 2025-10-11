@@ -1,7 +1,19 @@
 # himl
+
+[![CI](https://github.com/adobe/himl/workflows/CI/badge.svg)](https://github.com/adobe/himl/actions)
+[![codecov](https://codecov.io/gh/adobe/himl/branch/main/graph/badge.svg)](https://codecov.io/gh/adobe/himl)
+[![PyPI version](https://badge.fury.io/py/himl.svg)](https://badge.fury.io/py/himl)
+[![Python versions](https://img.shields.io/pypi/pyversions/himl.svg)](https://pypi.org/project/himl/)
+
 A hierarchical config using yaml in Python.
 
 Latest version is: 0.17.0
+
+> **⚠️ Breaking Changes in v0.18.0**
+> This version includes breaking changes. See [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md) for migration instructions.
+> - Default list merge strategy changed from `append` to `append_unique`
+> - Enhanced path validation (raises `FileNotFoundError` for non-existent paths)
+> - Empty directory validation (raises `Exception` for directories without YAML files)
 
 ## Description
 
@@ -442,3 +454,85 @@ config_processor.process(path=path, filters=filters, exclude_keys=exclude_keys,
                          type_strategies= [(list, [strategy_merge_override,'append']), (dict, ["merge"])] ))
 
 ```
+
+## Development
+
+### Setting up development environment
+
+1. Clone the repository:
+```bash
+git clone https://github.com/adobe/himl.git
+cd himl
+```
+
+2. Install in development mode with all dependencies:
+```bash
+pip install -e .[dev]
+```
+
+3. Run tests:
+```bash
+pytest tests/
+```
+
+4. Run tests with coverage:
+```bash
+pytest tests/ --cov=himl --cov-report=term-missing
+```
+
+5. Run linting:
+```bash
+flake8 .
+```
+
+### CI/CD
+
+This project uses GitHub Actions for continuous integration. The CI pipeline:
+
+- **Tests**: Runs on Python 3.8-3.14 across Ubuntu and macOS
+- **Security**: Runs bandit security checks and safety dependency checks
+- **Build**: Builds and validates the package
+- **Integration**: Tests CLI tools and package installation
+- **Coverage**: Reports test coverage to Codecov
+
+All tests must pass and maintain good test coverage before merging PRs.
+
+### Version Management
+
+This project uses [bump-my-version](https://github.com/callowayproject/bump-my-version) for version management. The version is automatically determined from Git tags using setuptools_scm.
+
+#### Bumping Versions
+
+Use the provided Makefile commands:
+
+```bash
+# Show what version bumps would result in
+make show-bump
+
+# Dry run version bumps (to see what would change)
+make dry-bump-patch   # 0.16.4 -> 0.16.5
+make dry-bump-minor   # 0.16.4 -> 0.17.0
+make dry-bump-major   # 0.16.4 -> 1.0.0
+
+# Actually bump the version
+make bump-patch       # For bug fixes
+make bump-minor       # For new features
+make bump-major       # For breaking changes
+```
+
+The version bump will:
+1. Update the version in `pyproject.toml`
+2. Update the version in `README.md`
+3. Update the version in `himl/main.py` (CLI help)
+4. Create a Git commit with the changes
+5. Create a Git tag with the new version
+
+### Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Make your changes and add tests
+4. Ensure all tests pass (`pytest tests/`)
+5. Commit your changes (`git commit -m 'Add amazing feature'`)
+6. Push to the branch (`git push origin feature/amazing-feature`)
+7. Open a Pull Request

@@ -23,6 +23,7 @@ logging.root.setLevel(logging.INFO)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 class Loader(yaml.SafeLoader):
     """
     Overloading the default YAML Loader by adding the custom include tag
@@ -39,15 +40,25 @@ class Loader(yaml.SafeLoader):
         """
         Method implementing the custom include tag logic that will grab a value from a yaml key in a specified folder
         at a specified path
-        :param node: String containing the path and key variables
+        :param node: String containing the path and optionally key variables
         :return: String values representing the extracted value for the specified path, key combination under node
         """
-        path, key = self.construct_yaml_str(node).split(" ")
-        filename = os.path.join(self.ROOT_DIR, path)
+        node_value = self.construct_yaml_str(node)
+        parts = node_value.split(" ", 1)  # Split into at most 2 parts
 
-        with open(filename, 'r') as f:
-            yaml_structure = yaml.load(f, Loader)
-            return self.__traverse_path(path=key, yaml_dict=yaml_structure)
+        if len(parts) == 1:
+            # Only path provided, return entire file content
+            path = parts[0]
+            filename = os.path.join(self.ROOT_DIR, path)
+            with open(filename, 'r') as f:
+                return yaml.load(f, Loader=Loader)  # nosec B506 # Custom Loader inherits from SafeLoader
+        else:
+            # Both path and key provided
+            path, key = parts
+            filename = os.path.join(self.ROOT_DIR, path)
+            with open(filename, 'r') as f:
+                yaml_structure = yaml.load(f, Loader=Loader)  # nosec B506 # Custom Loader inherits from SafeLoader
+                return self.__traverse_path(path=key, yaml_dict=yaml_structure)
 
     def __traverse_path(self, path: str, yaml_dict: dict):
         """
@@ -72,6 +83,10 @@ class Loader(yaml.SafeLoader):
         else:
             raise Exception("Key not found for {0} in dictionary {1}.".format(
                 current_key, yaml_dict))
+
+
+# Register the include constructor
+Loader.add_constructor('!include', Loader.include)
 
 
 def merge_configs(directories, levels, output_dir, enable_parallel, filter_rules):
@@ -111,7 +126,7 @@ def merge_logic(process_params):
     Loader.add_constructor('!include', Loader.include)
 
     # override the Yaml SafeLoader with our custom loader
-    yaml.SafeLoader = Loader
+    yaml.SafeLoader = Loader  # type: ignore
 
     # for path in directories:
     # use the HIML deep merge functionality
@@ -121,7 +136,9 @@ def merge_logic(process_params):
     level_values = [output.get(level) for level in levels]
 
     # create the publish path and all level_values except the last one
-    publish_path = os.path.join(output_dir, '') + '/'.join(level_values[:-1])
+    # Filter out None values and convert to strings
+    valid_level_values = [str(val) for val in level_values[:-1] if val is not None]
+    publish_path = os.path.join(output_dir, '') + '/'.join(valid_level_values)
     if not os.path.exists(publish_path):
         os.makedirs(publish_path)
 
@@ -143,11 +160,13 @@ def is_leaf_directory(dir, leaf_directories):
     return any(dir.startswith(leaf) for leaf in leaf_directories)
 
 
-def get_leaf_directories(src, leaf_directories):
+def get_leaf_directories(src, leaf_directories, exit_on_empty=True):
     """
     Method for doing a deep search of directories matching either the desired
     leaf directories.
     :param src: the source path to start looking from
+    :param leaf_directories: list of leaf directory patterns to match
+    :param exit_on_empty: whether to exit when no directories are found (default: True)
     :return: the list of absolute paths
     """
     directories = []
@@ -163,13 +182,14 @@ def get_leaf_directories(src, leaf_directories):
             else:
                 continue
 
-    if len(directories) == 0:
+    if len(directories) == 0 and exit_on_empty:
         sys.exit("No leaf directories found")
 
     return directories
 
 
-def parser_options(args):
+def get_parser():
+    """Create and return the argument parser"""
     parser = argparse.ArgumentParser()
     parser.add_argument('path', type=str, help='The configs directory')
 
@@ -183,6 +203,11 @@ def parser_options(args):
                         action='store_true', help='Process config using multiprocessing')
     parser.add_argument('--filter-rules-key', dest='filter_rules', default=None, type=str,
                         help='keep these keys from the generated data, based on the configured filter key')
+    return parser
+
+
+def parser_options(args):
+    parser = get_parser()
     return parser.parse_args(args)
 
 

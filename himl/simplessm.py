@@ -25,7 +25,8 @@ class SimpleSSM(object):
     def get(self, key):
         client = self.get_ssm_client()
         try:
-            logger.info("Resolving SSM secret for key '%s' on profile %s in region %s", key, self.aws_profile, self.region_name)
+            logger.info("Resolving SSM secret for key '%s' on profile %s in region %s", key, self.aws_profile,
+                        self.region_name)
             return client.get_parameter(Name=key, WithDecryption=True).get("Parameter").get("Value")
         except ClientError as e:
             raise Exception(
@@ -39,6 +40,7 @@ class SimpleSSM(object):
 
     def release_ssm_client(self):
         if self.initial_aws_profile is None:
-            del os.environ['AWS_PROFILE']
+            if 'AWS_PROFILE' in os.environ:
+                del os.environ['AWS_PROFILE']
         else:
             os.environ['AWS_PROFILE'] = self.initial_aws_profile

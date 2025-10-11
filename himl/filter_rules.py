@@ -13,7 +13,7 @@ class FilterRules(object):
 
         for filter in self.rules:
             selector = filter.get("selector", {})
-            if type(selector) != dict:
+            if not isinstance(selector, dict):
                 raise Exception("Filter selector must be a dictionary")
 
             if not self.match(output, selector):

@@ -8,15 +8,16 @@
 # OF ANY KIND, either express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
 
-import logging
 import os
+import sys
+
 
 class SecretResolver:
     def supports(self, secret_type):
-        return False
+        raise NotImplementedError("Subclasses must implement supports method")
 
     def resolve(self, secret_type, secret_params):
-        return None
+        raise NotImplementedError("Subclasses must implement resolve method")
 
     def get_param_or_exception(self, key, params):
         if key not in params:
@@ -29,7 +30,7 @@ class SSMSecretResolver(SecretResolver):
         self.default_aws_profile = default_aws_profile
 
     def supports(self, secret_type):
-        return "boto3" in sys.modules && secret_type == "ssm"
+        return "boto3" in sys.modules and secret_type == "ssm"
 
     def resolve(self, secret_type, secret_params):
         aws_profile = secret_params.get("aws_profile", self.default_aws_profile)
@@ -49,7 +50,7 @@ class S3SecretResolver(SecretResolver):
         self.default_aws_profile = default_aws_profile
 
     def supports(self, secret_type):
-        return "boto3" in sys.modules && secret_type == "s3"
+        return "boto3" in sys.modules and secret_type == "s3"
 
     def resolve(self, secret_type, secret_params):
         aws_profile = secret_params.get("aws_profile", self.default_aws_profile)
@@ -66,19 +67,21 @@ class S3SecretResolver(SecretResolver):
         s3 = SimpleS3(aws_profile, region_name)
         return s3.get(bucket, path, base64Encode)
 
+
 class SopsSecretResolver(SecretResolver):
     def supports(self, secret_type):
         return secret_type == "sops"
-    
+
     def resolve(self, secret_type, secret_params):
         from .simplesops import SimpleSops
         file = self.get_param_or_exception("secret_file", secret_params)
         sops = SimpleSops()
         return sops.get(secret_file=file, secret_key=secret_params.get("secret_key"))
 
+
 class VaultSecretResolver(SecretResolver):
     def supports(self, secret_type):
-        return "hvac" in sys.modules && secret_type == "vault"
+        return "hvac" in sys.modules and secret_type == "vault"
 
     def resolve(self, secret_type, secret_params):
         from .simplevault import SimpleVault
@@ -114,4 +117,5 @@ class AggregatedSecretResolver(SecretResolver):
             if resolver.supports(secret_type):
                 return resolver.resolve(secret_type, secret_params)
 
-        raise Exception("Could not resolve secret type '{}' with params {}. Check if you installed the required 3rd party modules.".format(secret_type, secret_params))
+        raise Exception("Could not resolve secret type '{}' with params {}. "
+                        "Check if you installed the required 3rd party modules.".format(secret_type, secret_params))

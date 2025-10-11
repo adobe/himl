@@ -10,11 +10,11 @@
 
 import boto3
 import logging
-import os
 from botocore.exceptions import ClientError
 
 
 logger = logging.getLogger(__name__)
+
 
 class SimpleS3(object):
     def __init__(self, aws_profile, region_name):
@@ -23,14 +23,14 @@ class SimpleS3(object):
 
     def get(self, bucket_name, bucket_key, base64Encode=False):
         try:
-            logger.info("Resolving S3 object for bucket %s, key '%s' on profile %s in region %s", 
-                bucket_name, bucket_key, self.aws_profile, self.region_name)
+            logger.info("Resolving S3 object for bucket %s, key '%s' on profile %s in region %s",
+                        bucket_name, bucket_key, self.aws_profile, self.region_name)
             client = self.get_s3_client()
             bucket_object = client.get_object(Bucket=bucket_name, Key=bucket_key)["Body"].read()
             return self.parse_data(bucket_object, base64Encode)
         except ClientError as e:
             raise Exception(
-                'Error while trying to read S3 value for bucket_name %s, bucket_key: %s - %s' 
+                'Error while trying to read S3 value for bucket_name %s, bucket_key: %s - %s'
                 % (bucket_name, bucket_key, e.response['Error']['Code']))
 
     def parse_data(self, bucket_object, base64Encode):

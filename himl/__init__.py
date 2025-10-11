@@ -10,3 +10,22 @@
 
 from .config_generator import ConfigGenerator, ConfigProcessor
 from .main import ConfigRunner
+
+# Make imports available at package level
+__all__ = ['ConfigGenerator', 'ConfigProcessor', 'ConfigRunner', '__version__']
+
+try:
+    from ._version import version as __version__
+except ImportError:
+    # Fallback for development installs
+    __version__ = "unknown"
+    try:
+        from importlib.metadata import version
+        __version__ = version("himl")
+    except ImportError:
+        try:
+            # Fallback for Python < 3.8
+            from importlib_metadata import version as fallback_version
+            __version__ = fallback_version("himl")
+        except ImportError:
+            pass
