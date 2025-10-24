@@ -101,7 +101,7 @@ jobs:
 
     - name: Upload security reports
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: security-reports
         path: |
@@ -141,7 +141,7 @@ jobs:
         himl-config-merger --help
 
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: dist-${{ github.sha }}
         path: dist/
@@ -162,7 +162,7 @@ jobs:
         python-version: '3.14'
 
     - name: Download build artifacts
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v6
       with:
         name: dist-${{ github.sha }}
         path: dist/
