@@ -46,8 +46,12 @@ Idea came from puppet's hiera.
       - [Vault](#vault)
     - [Merge with Terraform remote state](#merge-with-terraform-remote-state)
     - [Merge with env variables](#merge-with-env-variables)
+    - [Unicode Support](#unicode-support)
   - [himl config merger](#himl-config-merger)
+    - [Output filtering](#output-filtering)
     - [Extra merger features](#extra-merger-features)
+  - [Custom merge strategy](#custom-merge-strategy)
+  - [Development](#development)
 
 ## Installation
 
@@ -91,8 +95,13 @@ exclude_keys = () # can choose to remove specific keys
 output_format = "yaml" # yaml/json
 
 
-config_processor.process(path=path, filters=filters, exclude_keys=exclude_keys,
-                         output_format=output_format, print_data=True)
+config_processor.process(
+    path=path,
+    filters=filters,
+    exclude_keys=exclude_keys,
+    output_format=output_format,
+    print_data=True
+)
 
 ```
 
@@ -151,8 +160,9 @@ usage: himl [-h] [--output-file OUTPUT_FILE] [--format OUTPUT_FORMAT]
              [--filter FILTER] [--exclude EXCLUDE]
              [--skip-interpolation-validation]
              [--skip-interpolation-resolving] [--enclosing-key ENCLOSING_KEY]
-             [--cwd CWD]
+             [--cwd CWD] [--multi-line-string]
              [--list-merge-strategy {append,override,prepend,append_unique}]
+             [--allow-unicode]
              path
 ```
 
@@ -296,6 +306,63 @@ endpoint: "{{outputs.cluster_composition.output.value.redis_endpoint}}"
 kubeconfig_location: "{{env(KUBECONFIG)}}"
 ```
 
+### Unicode Support
+
+himl supports Unicode characters in configuration files, allowing you to use international languages, special characters, and emoji in your YAML configs.
+
+By default, Unicode characters are escaped in the output to ensure compatibility. You can preserve Unicode characters in their original form using the `--allow-unicode` flag.
+
+**Using the CLI:**
+```sh
+# With Unicode escaping (default)
+himl examples/simple/production --output-file config.yaml
+
+# Preserving Unicode characters
+himl examples/simple/production --output-file config.yaml --allow-unicode
+```
+
+**Using the Python module:**
+```py
+from himl import ConfigProcessor
+
+config_processor = ConfigProcessor()
+path = "examples/simple/production"
+
+# Process with Unicode preservation
+config = config_processor.process(
+    path=path,
+    output_format="yaml",
+    allow_unicode=True,  # Preserve Unicode characters
+    print_data=True
+)
+```
+
+**Example with Unicode content:**
+
+`config/default.yaml`:
+```yaml
+service:
+  name: "My Service"
+  description: "Multi-language support: English, 中文, العربية, Русский"
+
+messages:
+  welcome:
+    en: "Welcome"
+    zh: "欢迎"
+    ar: "مرحبا"
+    ru: "Добро пожаловать"
+
+team:
+  - name: "José García"
+    role: "Developer"
+  - name: "田中太郎"
+    role: "Designer"
+```
+
+When processed with `--allow-unicode`, the output preserves all Unicode characters. Without the flag, non-ASCII characters are escaped (e.g., `\u4e2d\u6587` for Chinese characters).
+
+**Note:** Some emoji and 4-byte UTF-8 characters may be escaped by the YAML library even with `--allow-unicode` enabled.
+
 
 ## himl-config-merger
 
@@ -394,6 +461,12 @@ Build the output with filtering:
 himl-config-merger examples/filters --output-dir merged_output --levels env region cluster --leaf-directories cluster --filter-rules-key _filters
 ```
 
+The `himl-config-merger` command also supports the `--allow-unicode` flag for preserving Unicode characters in the merged output files:
+
+```sh
+himl-config-merger examples/complex --output-dir merged_output --levels env region cluster --leaf-directories cluster --allow-unicode
+```
+
 ```yaml
 # output after filtering
 env: dev
@@ -449,9 +522,14 @@ filters = () # can choose to output only specific keys
 exclude_keys = () # can choose to remove specific keys
 output_format = "yaml" # yaml/json
 
-config_processor.process(path=path, filters=filters, exclude_keys=exclude_keys,
-                         output_format=output_format, print_data=True,
-                         type_strategies= [(list, [strategy_merge_override,'append']), (dict, ["merge"])] ))
+config_processor.process(
+    path=path,
+    filters=filters,
+    exclude_keys=exclude_keys,
+    output_format=output_format,
+    print_data=True,
+    type_strategies=[(list, [strategy_merge_override, 'append']), (dict, ["merge"])]
+)
 
 ```
 

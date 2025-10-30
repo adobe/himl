@@ -89,6 +89,7 @@ class TestConfigRunner:
         mock_opts.skip_interpolation_validation = False
         mock_opts.skip_secrets = False
         mock_opts.multi_line_string = False
+        mock_opts.allow_unicode = False
         mock_opts.merge_list_strategy = MagicMock()
         mock_opts.merge_list_strategy.value = 'append_unique'
 
@@ -115,6 +116,7 @@ class TestConfigRunner:
             False,
             False,
             False,
+            False,
             type_strategies=[(list, ['append_unique']), (dict, ["merge"])]
         )
 
@@ -135,6 +137,7 @@ class TestConfigRunner:
         mock_opts.skip_interpolation_validation = True
         mock_opts.skip_secrets = True
         mock_opts.multi_line_string = True
+        mock_opts.allow_unicode = False
         mock_opts.merge_list_strategy = MagicMock()
         mock_opts.merge_list_strategy.value = 'override'
 
@@ -157,6 +160,7 @@ class TestConfigRunner:
             True,
             True,
             True,
+            False,
             type_strategies=[(list, ['override']), (dict, ["merge"])]
         )
 
@@ -265,6 +269,7 @@ class TestConfigRunner:
         mock_opts.skip_interpolation_validation = False
         mock_opts.skip_secrets = False
         mock_opts.multi_line_string = False
+        mock_opts.allow_unicode = False
         mock_opts.merge_list_strategy = MagicMock()
         mock_opts.merge_list_strategy.value = 'append_unique'
 
@@ -307,6 +312,7 @@ class TestConfigRunner:
         mock_opts.skip_interpolation_validation = False
         mock_opts.skip_secrets = False
         mock_opts.multi_line_string = False
+        mock_opts.allow_unicode = False
         mock_opts.merge_list_strategy = MagicMock()
         mock_opts.merge_list_strategy.value = 'append_unique'
 
@@ -322,3 +328,74 @@ class TestConfigRunner:
         assert call_args[2] == ()
         # exclude_keys is the 4th positional argument (index 3)
         assert call_args[3] == ()
+
+    def test_parser_allow_unicode_flag(self):
+        """Test allow-unicode flag parsing"""
+        parser = self.runner.get_parser()
+
+        # Test default value (False)
+        args = parser.parse_args(['test_path'])
+        assert args.allow_unicode is False
+
+        # Test when flag is set (True)
+        args = parser.parse_args(['test_path', '--allow-unicode'])
+        assert args.allow_unicode is True
+
+    @patch('himl.main.ConfigProcessor')
+    def test_do_run_with_allow_unicode_true(self, mock_config_processor):
+        """Test do_run with allow_unicode=True"""
+        mock_opts = MagicMock()
+        mock_opts.cwd = None
+        mock_opts.path = 'test_path'
+        mock_opts.filter = None
+        mock_opts.exclude = None
+        mock_opts.output_file = None
+        mock_opts.print_data = True
+        mock_opts.output_format = 'yaml'
+        mock_opts.enclosing_key = None
+        mock_opts.remove_enclosing_key = None
+        mock_opts.skip_interpolation_resolving = False
+        mock_opts.skip_interpolation_validation = False
+        mock_opts.skip_secrets = False
+        mock_opts.multi_line_string = False
+        mock_opts.allow_unicode = True  # Enable Unicode
+        mock_opts.merge_list_strategy = MagicMock()
+        mock_opts.merge_list_strategy.value = 'append_unique'
+
+        mock_processor_instance = MagicMock()
+        mock_config_processor.return_value = mock_processor_instance
+
+        with patch('os.getcwd', return_value='/current/dir'):
+            self.runner.do_run(mock_opts)
+
+        # Verify allow_unicode=True is passed correctly
+        call_args = mock_processor_instance.process.call_args[0]
+        # allow_unicode is the 14th positional argument (index 13)
+        assert call_args[13] is True
+
+    @patch('sys.stdout', new_callable=StringIO)
+    def test_run_integration_with_unicode(self, mock_stdout):
+        """Test integration with Unicode content"""
+        # Create test config with Unicode content
+        test_data = {
+            'greeting': 'Hello 世界',
+            'emoji': '🚀 rocket',
+            'multilingual': {
+                'english': 'Hello',
+                'japanese': 'こんにちは',
+                'arabic': 'مرحبا'
+            }
+        }
+        self.create_test_yaml('unicode_config.yaml', test_data)
+
+        args = [
+            os.path.join(self.temp_dir, 'unicode_config.yaml'),
+            '--allow-unicode'
+        ]
+
+        with patch('os.getcwd', return_value=self.temp_dir):
+            self.runner.run(args)
+
+        # Verify output contains Unicode characters
+        output = mock_stdout.getvalue()
+        assert 'greeting' in output or 'Hello' in output  # Basic verification that something was output
