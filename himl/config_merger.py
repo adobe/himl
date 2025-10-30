@@ -89,18 +89,19 @@ class Loader(yaml.SafeLoader):
 Loader.add_constructor('!include', Loader.include)
 
 
-def merge_configs(directories, levels, output_dir, enable_parallel, filter_rules):
+def merge_configs(directories, levels, output_dir, enable_parallel, filter_rules, allow_unicode):
     """
     Method for running the merge configuration logic under different formats
     :param directories: list of paths for leaf directories
     :param levels: list of hierarchy levels to traverse
     :param output_dir: where to save the generated configs
     :param enable_parallel: to enable parallel config generation
+    :param allow_unicode: allow unicode characters in output
     """
     config_processor = ConfigProcessor()
     process_config = []
     for path in directories:
-        process_config.append((config_processor, path, levels, output_dir, filter_rules))
+        process_config.append((config_processor, path, levels, output_dir, filter_rules, allow_unicode))
 
     if enable_parallel:
         logger.info("Processing config in parallel")
@@ -121,6 +122,7 @@ def merge_logic(process_params):
     levels = process_params[2]
     output_dir = process_params[3]
     filter_rules = process_params[4]
+    allow_unicode = process_params[5]
 
     # load the !include tag
     Loader.add_constructor('!include', Loader.include)
@@ -153,7 +155,7 @@ def merge_logic(process_params):
     logger.info("Found input config directory: %s", path)
     logger.info("Storing generated config to: %s", filename)
     with open(filename, "w+") as f:
-        f.write(yaml.dump(output))
+        f.write(yaml.dump(output, allow_unicode=allow_unicode))
 
 
 def is_leaf_directory(dir, leaf_directories):
@@ -203,6 +205,8 @@ def get_parser():
                         action='store_true', help='Process config using multiprocessing')
     parser.add_argument('--filter-rules-key', dest='filter_rules', default=None, type=str,
                         help='keep these keys from the generated data, based on the configured filter key')
+    parser.add_argument('--allow-unicode', dest='allow_unicode', default=False,
+                        action='store_true', help='allow unicode characters in output (default: False, outputs escape sequences)')
     return parser
 
 
@@ -219,4 +223,4 @@ def run(args=None):
 
     # merge the configs using HIML
     merge_configs(dirs, opts.hierarchy_levels,
-                  opts.output_dir, opts.enable_parallel, opts.filter_rules)
+                  opts.output_dir, opts.enable_parallel, opts.filter_rules, opts.allow_unicode)

@@ -42,6 +42,7 @@ class ConfigProcessor(object):
                 skip_interpolation_validation=False,
                 skip_secrets=False,
                 multi_line_string=False,
+                allow_unicode=False,
                 type_strategies=[(list, ["append_unique"]), (dict, ["merge"])],
                 fallback_strategies=["override"],
                 type_conflict_strategies=["override"]):
@@ -53,7 +54,7 @@ class ConfigProcessor(object):
         cwd = cwd or os.getcwd()
 
         generator = self._create_and_initialize_generator(
-            cwd, path, multi_line_string, type_strategies, fallback_strategies, type_conflict_strategies)
+            cwd, path, multi_line_string, allow_unicode, type_strategies, fallback_strategies, type_conflict_strategies)
 
         # Process data exclusions and interpolations
         self._process_exclusions(generator, exclude_keys)
@@ -73,10 +74,10 @@ class ConfigProcessor(object):
         """Determine if interpolation validation should be skipped."""
         return skip_interpolation_validation or skip_interpolations or skip_secrets
 
-    def _create_and_initialize_generator(self, cwd, path, multi_line_string, type_strategies,
+    def _create_and_initialize_generator(self, cwd, path, multi_line_string, allow_unicode, type_strategies,
                                          fallback_strategies, type_conflict_strategies):
         """Create and initialize the ConfigGenerator."""
-        generator = ConfigGenerator(cwd, path, multi_line_string, type_strategies, fallback_strategies,
+        generator = ConfigGenerator(cwd, path, multi_line_string, allow_unicode, type_strategies, fallback_strategies,
                                     type_conflict_strategies)
         generator.generate_hierarchy()
         generator.process_hierarchy()
@@ -179,12 +180,13 @@ class ConfigGenerator(object):
     will contain merged data on each layer.
     """
 
-    def __init__(self, cwd, path, multi_line_string, type_strategies, fallback_strategies, type_conflict_strategies):
+    def __init__(self, cwd, path, multi_line_string, allow_unicode, type_strategies, fallback_strategies, type_conflict_strategies):
         self.cwd = cwd
         self.path = path
         self.hierarchy = self.generate_hierarchy()
         self.generated_data = OrderedDict()
         self.interpolation_validator = InterpolationValidator()
+        self.allow_unicode = allow_unicode
         self.type_strategies = type_strategies
         self.fallback_strategies = fallback_strategies
         self.type_conflict_strategies = type_conflict_strategies
@@ -338,7 +340,7 @@ class ConfigGenerator(object):
 
     def output_yaml_data(self, data):
         return yaml.dump(data, Dumper=ConfigGenerator.yaml_dumper(), default_flow_style=False, width=200,
-                         sort_keys=False)
+                         sort_keys=False, allow_unicode=self.allow_unicode)
 
     def yaml_to_json(self, yaml_data):
         return json.dumps(yaml.load(yaml_data, Loader=yaml.SafeLoader), indent=4)

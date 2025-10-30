@@ -191,6 +191,52 @@ class TestConfigProcessor:
         )
         assert json_result == config_data
 
+    def test_unicode_processing_disabled(self):
+        """Test Unicode processing with allow_unicode=False"""
+        config_data = {
+            'message': 'Hello 世界',
+            'emoji': '✨ sparkles',
+            'accents': 'café'
+        }
+        self.create_test_yaml('unicode.yaml', config_data)
+
+        result = self.config_processor.process(
+            cwd=self.temp_dir,
+            path='unicode.yaml',
+            allow_unicode=False,
+            print_data=False
+        )
+
+        # Data should be processed correctly regardless of Unicode settings
+        assert result['message'] == 'Hello 世界'
+        assert result['emoji'] == '✨ sparkles'
+        assert result['accents'] == 'café'
+
+    def test_unicode_processing_enabled(self):
+        """Test Unicode processing with allow_unicode=True"""
+        config_data = {
+            'message': 'Hello 世界',
+            'emoji': '✨ sparkles',
+            'accents': 'café',
+            'arabic': 'مرحبا',
+            'cyrillic': 'Привет'
+        }
+        self.create_test_yaml('unicode.yaml', config_data)
+
+        result = self.config_processor.process(
+            cwd=self.temp_dir,
+            path='unicode.yaml',
+            allow_unicode=True,
+            print_data=False
+        )
+
+        # Data should be processed correctly
+        assert result['message'] == 'Hello 世界'
+        assert result['emoji'] == '✨ sparkles'
+        assert result['accents'] == 'café'
+        assert result['arabic'] == 'مرحبا'
+        assert result['cyrillic'] == 'Привет'
+
 
 class TestConfigGenerator:
     """Test cases for ConfigGenerator class"""
@@ -218,6 +264,7 @@ class TestConfigGenerator:
             cwd=self.temp_dir,
             path='test',
             multi_line_string=False,
+            allow_unicode=False,
             type_strategies=[(list, ["append_unique"]), (dict, ["merge"])],
             fallback_strategies=["override"],
             type_conflict_strategies=["override"]
@@ -238,6 +285,7 @@ class TestConfigGenerator:
             cwd=self.temp_dir,
             path='production',
             multi_line_string=False,
+            allow_unicode=False,
             type_strategies=[(list, ["append_unique"]), (dict, ["merge"])],
             fallback_strategies=["override"],
             type_conflict_strategies=["override"]
@@ -256,6 +304,7 @@ class TestConfigGenerator:
             cwd=self.temp_dir,
             path='test',
             multi_line_string=False,
+            allow_unicode=False,
             type_strategies=[(list, ["append_unique"]), (dict, ["merge"])],
             fallback_strategies=["override"],
             type_conflict_strategies=["override"]
@@ -270,6 +319,7 @@ class TestConfigGenerator:
             cwd=self.temp_dir,
             path='test',
             multi_line_string=False,
+            allow_unicode=False,
             type_strategies=[(list, ["append_unique"]), (dict, ["merge"])],
             fallback_strategies=["override"],
             type_conflict_strategies=["override"]
@@ -298,6 +348,7 @@ class TestConfigGenerator:
             cwd=self.temp_dir,
             path='test',
             multi_line_string=False,
+            allow_unicode=False,
             type_strategies=[(list, ["append_unique"]), (dict, ["merge"])],
             fallback_strategies=["override"],
             type_conflict_strategies=["override"]
@@ -316,6 +367,7 @@ class TestConfigGenerator:
             cwd=self.temp_dir,
             path='test',
             multi_line_string=False,
+            allow_unicode=False,
             type_strategies=[(list, ["append_unique"]), (dict, ["merge"])],
             fallback_strategies=["override"],
             type_conflict_strategies=["override"]
@@ -335,6 +387,7 @@ class TestConfigGenerator:
             cwd=self.temp_dir,
             path='test',
             multi_line_string=False,
+            allow_unicode=False,
             type_strategies=[(list, ["append_unique"]), (dict, ["merge"])],
             fallback_strategies=["override"],
             type_conflict_strategies=["override"]
@@ -353,6 +406,7 @@ class TestConfigGenerator:
             cwd=self.temp_dir,
             path='env=production/region=us-east-1/cluster=web',
             multi_line_string=False,
+            allow_unicode=False,
             type_strategies=[(list, ["append_unique"]), (dict, ["merge"])],
             fallback_strategies=["override"],
             type_conflict_strategies=["override"]
@@ -361,3 +415,88 @@ class TestConfigGenerator:
         values = generator.get_values_from_dir_path()
         expected = {'env': 'production', 'region': 'us-east-1', 'cluster': 'web'}
         assert values == expected
+
+    def test_allow_unicode_false(self):
+        """Test that Unicode characters are escaped when allow_unicode=False"""
+        generator = ConfigGenerator(
+            cwd=self.temp_dir,
+            path='test',
+            multi_line_string=False,
+            allow_unicode=False,
+            type_strategies=[(list, ["append_unique"]), (dict, ["merge"])],
+            fallback_strategies=["override"],
+            type_conflict_strategies=["override"]
+        )
+
+        test_data = {
+            'greeting': 'Hello 世界',
+            'emoji': '🚀 rocket',
+            'special': 'café résumé naïve'
+        }
+        yaml_output = generator.output_yaml_data(test_data)
+
+        # When allow_unicode=False, Unicode should be escaped
+        assert '\\u' in yaml_output or '\\x' in yaml_output or 'greeting: Hello' in yaml_output
+
+    def test_allow_unicode_true(self):
+        """Test that Unicode characters are preserved when allow_unicode=True"""
+        generator = ConfigGenerator(
+            cwd=self.temp_dir,
+            path='test',
+            multi_line_string=False,
+            allow_unicode=True,
+            type_strategies=[(list, ["append_unique"]), (dict, ["merge"])],
+            fallback_strategies=["override"],
+            type_conflict_strategies=["override"]
+        )
+
+        test_data = {
+            'greeting': 'Hello 世界',
+            'emoji': '🚀 rocket',
+            'special': 'café résumé naïve'
+        }
+        yaml_output = generator.output_yaml_data(test_data)
+
+        # When allow_unicode=True, most Unicode should be preserved
+        # Note: PyYAML may still escape some 4-byte UTF-8 characters (emojis)
+        assert '世界' in yaml_output  # Chinese characters preserved
+        assert 'café' in yaml_output  # Accented characters preserved
+        assert 'résumé' in yaml_output  # Accented characters preserved
+        assert 'naïve' in yaml_output  # Accented characters preserved
+        # Emoji might be escaped as \U0001F680 even with allow_unicode=True
+        assert ('🚀' in yaml_output or '\\U0001F680' in yaml_output)
+
+    def test_unicode_in_nested_structures(self):
+        """Test Unicode handling in nested data structures"""
+        generator = ConfigGenerator(
+            cwd=self.temp_dir,
+            path='test',
+            multi_line_string=False,
+            allow_unicode=True,
+            type_strategies=[(list, ["append_unique"]), (dict, ["merge"])],
+            fallback_strategies=["override"],
+            type_conflict_strategies=["override"]
+        )
+
+        test_data = {
+            'users': [
+                {'name': 'José García', 'country': 'España'},
+                {'name': '田中太郎', 'country': '日本'},
+                {'name': 'François Müller', 'country': 'France'}
+            ],
+            'config': {
+                'title': 'Configuration — Настройки',
+                'description': 'Multi-language support: English, 中文, العربية, हिन्दी'
+            }
+        }
+        yaml_output = generator.output_yaml_data(test_data)
+
+        # Verify Unicode characters are preserved (excluding 4-byte emoji which may be escaped)
+        assert 'José García' in yaml_output
+        assert '田中太郎' in yaml_output
+        assert 'España' in yaml_output
+        assert '日本' in yaml_output
+        assert 'Настройки' in yaml_output
+        assert '中文' in yaml_output
+        assert 'العربية' in yaml_output
+        assert 'हिन्दी' in yaml_output

@@ -43,7 +43,7 @@ class ConfigRunner(object):
         config_processor.process(cwd, opts.path, filters, excluded_keys, opts.enclosing_key,
                                  opts.remove_enclosing_key, opts.output_format, opts.print_data, opts.output_file,
                                  opts.skip_interpolation_resolving, opts.skip_interpolation_validation,
-                                 opts.skip_secrets, opts.multi_line_string,
+                                 opts.skip_secrets, opts.multi_line_string, opts.allow_unicode,
                                  type_strategies=[(list, [opts.merge_list_strategy.value]), (dict, ["merge"])])
 
     @staticmethod
@@ -79,6 +79,8 @@ class ConfigRunner(object):
         parser.add_argument('--list-merge-strategy', dest='merge_list_strategy', type=ListMergeStrategy,
                             choices=list(ListMergeStrategy), default='append_unique',
                             help='override default merge strategy for list')
+        parser.add_argument('--allow-unicode', dest='allow_unicode', action='store_true', default=False,
+                            help='allow unicode characters in output (default: False, outputs escape sequences)')
         parser.add_argument('--version', action='version', version='%(prog)s v{version}'.format(version="0.18.0"),
                             help='print himl version')
         return parser
