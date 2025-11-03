@@ -95,13 +95,8 @@ exclude_keys = () # can choose to remove specific keys
 output_format = "yaml" # yaml/json
 
 
-config_processor.process(
-    path=path,
-    filters=filters,
-    exclude_keys=exclude_keys,
-    output_format=output_format,
-    print_data=True
-)
+config_processor.process(path=path, filters=filters, exclude_keys=exclude_keys,
+                         output_format=output_format, print_data=True)
 
 ```
 
@@ -522,14 +517,9 @@ filters = () # can choose to output only specific keys
 exclude_keys = () # can choose to remove specific keys
 output_format = "yaml" # yaml/json
 
-config_processor.process(
-    path=path,
-    filters=filters,
-    exclude_keys=exclude_keys,
-    output_format=output_format,
-    print_data=True,
-    type_strategies=[(list, [strategy_merge_override, 'append']), (dict, ["merge"])]
-)
+config_processor.process(path=path, filters=filters, exclude_keys=exclude_keys,
+                         output_format=output_format, print_data=True,
+                         type_strategies= [(list, [strategy_merge_override,'append']), (dict, ["merge"])] ))
 
 ```
 
