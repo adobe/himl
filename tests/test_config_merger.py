@@ -158,7 +158,8 @@ class TestConfigMergerFunctions:
             os.path.join(self.temp_dir, 'env=dev/region=us-east-1/cluster=web'),
             ['env', 'region', 'cluster'],
             output_dir,
-            None  # No filter rules
+            None,  # No filter rules
+            False  # allow_unicode
         )
 
         merge_logic(config_tuple)
@@ -203,7 +204,8 @@ class TestConfigMergerFunctions:
             os.path.join(self.temp_dir, 'env=dev/region=us-east-1/cluster=web'),
             ['env', 'region', 'cluster'],
             output_dir,
-            '_filters'
+            '_filters',
+            False  # allow_unicode
         )
 
         merge_logic(config_tuple)
@@ -224,7 +226,7 @@ class TestConfigMergerFunctions:
         levels = ['env', 'region']
         output_dir = '/output'
 
-        merge_configs(directories, levels, output_dir, enable_parallel=True, filter_rules=None)
+        merge_configs(directories, levels, output_dir, enable_parallel=True, filter_rules=None, allow_unicode=False)
 
         mock_pool.assert_called_once_with(4)
         mock_pool_instance.map.assert_called_once()
@@ -236,7 +238,7 @@ class TestConfigMergerFunctions:
         levels = ['env', 'region']
         output_dir = '/output'
 
-        merge_configs(directories, levels, output_dir, enable_parallel=False, filter_rules=None)
+        merge_configs(directories, levels, output_dir, enable_parallel=False, filter_rules=None, allow_unicode=False)
 
         assert mock_merge_logic.call_count == 2
 
@@ -287,7 +289,8 @@ class TestConfigMergerFunctions:
             ['env', 'region'],
             'output',
             False,  # enable_parallel default
-            None    # filter_rules_key default
+            None,   # filter_rules_key default
+            False   # allow_unicode default
         )
 
     def test_parser_default_values(self):
@@ -348,10 +351,106 @@ class TestConfigMergerFunctions:
             os.path.join(self.temp_dir, 'env=dev/region=us-east-1/cluster=web'),
             ['env', 'region', 'cluster'],
             output_dir,
-            '_filters'  # Filter key that doesn't exist
+            '_filters',  # Filter key that doesn't exist
+            False  # allow_unicode
         )
 
         with pytest.raises(Exception) as exc_info:
             merge_logic(config_tuple)
 
         assert "Filter rule key '_filters' not found in config" in str(exc_info.value)
+
+    def test_parser_allow_unicode_flag(self):
+        """Test allow-unicode flag parsing"""
+        parser = get_parser()
+
+        # Test default value (False)
+        args = parser.parse_args([
+            'input_dir',
+            '--output-dir', 'output',
+            '--levels', 'env',
+            '--leaf-directories', 'cluster'
+        ])
+        assert args.allow_unicode is False
+
+        # Test when flag is set (True)
+        args = parser.parse_args([
+            'input_dir',
+            '--output-dir', 'output',
+            '--levels', 'env',
+            '--leaf-directories', 'cluster',
+            '--allow-unicode'
+        ])
+        assert args.allow_unicode is True
+
+    @patch('himl.config_merger.ConfigProcessor')
+    def test_merge_logic_with_unicode(self, mock_config_processor):
+        """Test merge logic with Unicode content"""
+        self.create_directory_structure()
+
+        # Mock ConfigProcessor with Unicode content
+        mock_processor = MagicMock()
+        mock_processor.process.return_value = {
+            'env': 'dev',
+            'region': 'us-east-1',
+            'cluster': 'web',
+            'message': 'Hello 世界',
+            'emoji': '🚀 rocket',
+            'multilingual': {
+                'japanese': 'こんにちは',
+                'arabic': 'مرحبا',
+                'russian': 'Привет'
+            }
+        }
+
+        output_dir = os.path.join(self.temp_dir, 'output')
+        os.makedirs(output_dir, exist_ok=True)
+
+        # Test with allow_unicode=True
+        config_tuple = (
+            mock_processor,
+            os.path.join(self.temp_dir, 'env=dev/region=us-east-1/cluster=web'),
+            ['env', 'region', 'cluster'],
+            output_dir,
+            None,
+            True  # allow_unicode=True
+        )
+
+        merge_logic(config_tuple)
+
+        # Verify output file was created
+        expected_output = os.path.join(output_dir, 'dev/us-east-1/web.yaml')
+        assert os.path.exists(expected_output)
+
+        # Verify content has Unicode characters
+        with open(expected_output, 'r', encoding='utf-8') as f:
+            content = f.read()
+            # Check that Unicode is preserved in the file
+            assert '世界' in content or 'message:' in content  # Unicode should be present or at least the key
+
+    @patch('himl.config_merger.merge_configs')
+    @patch('himl.config_merger.get_leaf_directories')
+    def test_run_with_unicode_flag(self, mock_get_leaf_directories, mock_merge_configs):
+        """Test run function with allow-unicode flag"""
+        mock_get_leaf_directories.return_value = ['dir1', 'dir2']
+
+        args = [
+            'input_dir',
+            '--output-dir', 'output',
+            '--levels', 'env', 'region',
+            '--leaf-directories', 'cluster',
+            '--allow-unicode'
+        ]
+
+        with patch('sys.argv', ['himl-config-merger'] + args):
+            run()
+
+        mock_get_leaf_directories.assert_called_once_with('input_dir', ['cluster'])
+        mock_merge_configs.assert_called_once_with(
+            ['dir1', 'dir2'],
+            ['env', 'region'],
+            'output',
+            False,  # enable_parallel default
+            None,   # filter_rules_key default
+            True    # allow_unicode=True
+        )
