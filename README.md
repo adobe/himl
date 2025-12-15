@@ -557,7 +557,7 @@ flake8 .
 
 This project uses GitHub Actions for continuous integration. The CI pipeline:
 
-- **Tests**: Runs on Python 3.8-3.14 across Ubuntu and macOS
+- **Tests**: Runs on Python 3.10-3.14 across Ubuntu and macOS
 - **Security**: Runs bandit security checks and safety dependency checks
 - **Build**: Builds and validates the package
 - **Integration**: Tests CLI tools and package installation

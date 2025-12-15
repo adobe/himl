@@ -8,7 +8,7 @@
 # OF ANY KIND, either express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
 
-# Python 3.8+ only (Python 2 is EOL)
+# Python 3.10+ only (Python 2 is EOL)
 PY3 = True
 
 
