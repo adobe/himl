@@ -7,7 +7,7 @@
 
 A hierarchical config using yaml in Python.
 
-Latest version is: **0.19.0**
+Latest version is: **0.20.0**
 
 > **⚠️ Breaking Changes in v0.18.0**
 > This version includes breaking changes:
