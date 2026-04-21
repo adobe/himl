@@ -380,6 +380,19 @@ class TestDictIteratorLoopPendingItems:
 
         assert isinstance(result, set)
 
+    def test_resolves_list_element_pending_key(self):
+        """_set_at_path uses int indexing when the pending key points to a list element (line 203)"""
+        iterator = DictIterator()
+        data = {'env': 'prod', 'items': ['plain', '{{env.name}}']}
+        pending = {'items.1'}
+
+        still_pending = iterator.loop_pending_items(
+            data, lambda v: v.replace('{{env.name}}', 'prod'), pending
+        )
+
+        assert data['items'][1] == 'prod'
+        assert 'items.1' not in still_pending
+
 
 class TestInterpolationResolverWithPendingKeys:
     """Tests for InterpolationResolver.resolve_interpolations with pending_keys"""

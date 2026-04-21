@@ -525,6 +525,24 @@ class TestConfigGenerator:
         with pytest.raises(FileNotFoundError):
             generator.process_hierarchy_with_precomputed(OrderedDict())
 
+    def test_process_hierarchy_with_precomputed_empty_state_raises(self):
+        """process_hierarchy_with_precomputed raises when precomputed state is empty and no leaf YAMLs exist"""
+        empty_leaf = os.path.join(self.temp_dir, 'empty_leaf')
+        os.makedirs(empty_leaf, exist_ok=True)
+
+        generator = ConfigGenerator(
+            cwd=self.temp_dir,
+            path='empty_leaf',
+            multi_line_string=False,
+            allow_unicode=False,
+            type_strategies=[(list, ["append_unique"]), (dict, ["merge"])],
+            fallback_strategies=["override"],
+            type_conflict_strategies=["override"]
+        )
+
+        with pytest.raises(Exception, match="No YAML files found"):
+            generator.process_hierarchy_with_precomputed(OrderedDict())
+
     def test_resolve_interpolations_pending_keys_on_second_pass(self):
         """Second resolve_interpolations call uses targeted pending-key traversal"""
         generator = ConfigGenerator(
