@@ -105,6 +105,10 @@ def merge_logic_batch(batch_params):
 def build_parent_cache(directories, cwd=None):
     import copy
     from .config_generator import ConfigGenerator
+    # Patch SafeLoader so !include tags work in yaml_get_content (same patch
+    # that merge_logic applies, but build_parent_cache runs before merge_logic).
+    Loader.add_constructor('!include', Loader.include)
+    yaml.SafeLoader = Loader  # type: ignore
     cwd = cwd or os.getcwd()
     cache = {}
     for leaf_path in directories:
