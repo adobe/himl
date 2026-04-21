@@ -17,7 +17,7 @@ from unittest.mock import patch, MagicMock
 
 from himl.config_merger import (
     Loader, merge_configs, merge_logic, get_leaf_directories,
-    get_parser, run
+    get_parser, run, _group_by_parent, merge_logic_batch, build_parent_cache
 )
 
 
@@ -456,3 +456,177 @@ class TestConfigMergerFunctions:
             True,   # allow_unicode=True
             enable_precompute=False
         )
+
+    def test_merge_logic_with_precomputed_state(self):
+        """Test merge_logic passes precomputed_state to ConfigProcessor.process"""
+        self.create_directory_structure()
+
+        mock_processor = MagicMock()
+        mock_processor.process.return_value = {
+            'env': 'dev', 'region': 'us-east-1', 'cluster': 'web'
+        }
+
+        output_dir = os.path.join(self.temp_dir, 'output')
+        os.makedirs(output_dir, exist_ok=True)
+
+        precomputed = {'env': 'dev', 'region': 'us-east-1'}
+        config_tuple = (
+            mock_processor,
+            os.path.join(self.temp_dir, 'env=dev/region=us-east-1/cluster=web'),
+            ['env', 'region', 'cluster'],
+            output_dir,
+            None,
+            False,
+            precomputed,
+        )
+
+        merge_logic(config_tuple)
+
+        call_kwargs = mock_processor.process.call_args[1]
+        assert call_kwargs['precomputed_state'] == precomputed
+
+    @patch('himl.config_merger.build_parent_cache')
+    @patch('himl.config_merger.merge_logic')
+    def test_merge_configs_with_precompute_enabled(self, mock_merge_logic, mock_build_parent_cache):
+        """Test merge_configs calls build_parent_cache when enable_precompute=True"""
+        mock_build_parent_cache.return_value = {}
+        directories = ['dir1', 'dir2']
+
+        merge_configs(directories, ['env'], '/output', enable_parallel=False,
+                      filter_rules=None, allow_unicode=False, enable_precompute=True)
+
+        mock_build_parent_cache.assert_called_once_with(directories)
+        assert mock_merge_logic.call_count == 2
+
+    def test_parser_enable_precompute_flag(self):
+        """Test --enable-precompute flag is parsed correctly"""
+        parser = get_parser()
+
+        args = parser.parse_args([
+            'input_dir', '--output-dir', 'output',
+            '--levels', 'env', '--leaf-directories', 'cluster',
+            '--enable-precompute'
+        ])
+        assert args.enable_precompute is True
+
+    def test_parser_enable_precompute_default_false(self):
+        """Test --enable-precompute defaults to False"""
+        parser = get_parser()
+        args = parser.parse_args([
+            'input_dir', '--output-dir', 'output',
+            '--levels', 'env', '--leaf-directories', 'cluster'
+        ])
+        assert args.enable_precompute is False
+
+
+class TestGroupByParent:
+    """Tests for _group_by_parent helper"""
+
+    def test_single_parent(self):
+        dirs = ['/root/parent/leaf1', '/root/parent/leaf2', '/root/parent/leaf3']
+        result = _group_by_parent(dirs)
+        assert len(result) == 1
+        assert set(result[0]) == set(dirs)
+
+    def test_multiple_parents(self):
+        dirs = [
+            '/root/parent1/leaf1',
+            '/root/parent1/leaf2',
+            '/root/parent2/leaf3',
+        ]
+        result = _group_by_parent(dirs)
+        assert len(result) == 2
+        flat = {d for group in result for d in group}
+        assert flat == set(dirs)
+
+    def test_empty_input(self):
+        assert _group_by_parent([]) == []
+
+    def test_each_leaf_in_own_parent(self):
+        dirs = ['/a/x/leaf', '/b/y/leaf', '/c/z/leaf']
+        result = _group_by_parent(dirs)
+        assert len(result) == 3
+
+
+class TestMergeLogicBatch:
+    """Tests for merge_logic_batch"""
+
+    @patch('himl.config_merger.merge_logic')
+    def test_calls_merge_logic_for_each_param(self, mock_merge_logic):
+        batch = [('p1',), ('p2',), ('p3',)]
+        merge_logic_batch(batch)
+        assert mock_merge_logic.call_count == 3
+        mock_merge_logic.assert_any_call(('p1',))
+        mock_merge_logic.assert_any_call(('p3',))
+
+    @patch('himl.config_merger.merge_logic')
+    def test_empty_batch(self, mock_merge_logic):
+        merge_logic_batch([])
+        mock_merge_logic.assert_not_called()
+
+
+class TestBuildParentCache:
+    """Tests for build_parent_cache"""
+
+    def setup_method(self):
+        self.temp_dir = tempfile.mkdtemp()
+
+    def teardown_method(self):
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
+
+    def _create_service_hierarchy(self, services, deployments_per_service):
+        """Create a minimal hierarchy: cwd/service=X/deployment=Y/deployment.yaml"""
+        for svc in services:
+            svc_dir = os.path.join(self.temp_dir, f'service={svc}')
+            os.makedirs(svc_dir, exist_ok=True)
+            with open(os.path.join(svc_dir, 'service.yaml'), 'w') as f:
+                yaml.dump({'service': svc}, f)
+            for dep in deployments_per_service:
+                dep_dir = os.path.join(svc_dir, f'deployment={dep}')
+                os.makedirs(dep_dir, exist_ok=True)
+                with open(os.path.join(dep_dir, 'deployment.yaml'), 'w') as f:
+                    yaml.dump({'deployment': dep}, f)
+
+    def _leaf_paths(self, services, deployments):
+        return [
+            os.path.join(self.temp_dir, f'service={svc}', f'deployment={dep}')
+            for svc in services for dep in deployments
+        ]
+
+    def test_deduplicates_same_parent(self):
+        """Two leaves under the same service produce one cache entry"""
+        self._create_service_hierarchy(['svc1'], ['dep1', 'dep2'])
+        leaves = self._leaf_paths(['svc1'], ['dep1', 'dep2'])
+
+        cache = build_parent_cache(leaves, cwd=self.temp_dir)
+
+        assert len(cache) == 1
+
+    def test_separate_parents_produce_separate_entries(self):
+        """Leaves under different services produce one entry per service"""
+        self._create_service_hierarchy(['svc1', 'svc2'], ['dep1', 'dep2'])
+        leaves = self._leaf_paths(['svc1', 'svc2'], ['dep1', 'dep2'])
+
+        cache = build_parent_cache(leaves, cwd=self.temp_dir)
+
+        assert len(cache) == 2
+
+    def test_cache_keyed_by_absolute_parent_path(self):
+        """Cache keys are absolute paths of parent directories"""
+        self._create_service_hierarchy(['svc1'], ['dep1'])
+        leaves = self._leaf_paths(['svc1'], ['dep1'])
+
+        cache = build_parent_cache(leaves, cwd=self.temp_dir)
+
+        expected_key = os.path.abspath(os.path.join(self.temp_dir, 'service=svc1'))
+        assert expected_key in cache
+
+    def test_cache_contains_merged_parent_data(self):
+        """Cached state contains YAML data merged from the parent directory"""
+        self._create_service_hierarchy(['svc1'], ['dep1'])
+        leaves = self._leaf_paths(['svc1'], ['dep1'])
+
+        cache = build_parent_cache(leaves, cwd=self.temp_dir)
+
+        parent_key = os.path.abspath(os.path.join(self.temp_dir, 'service=svc1'))
+        assert cache[parent_key].get('service') == 'svc1'

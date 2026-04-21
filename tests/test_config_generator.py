@@ -191,6 +191,25 @@ class TestConfigProcessor:
         )
         assert json_result == config_data
 
+    def test_process_with_precomputed_state(self):
+        """ConfigProcessor.process uses precomputed_state via process_hierarchy_with_precomputed"""
+        leaf_dir = os.path.join(self.temp_dir, 'env=dev', 'deployment=dep1')
+        os.makedirs(leaf_dir, exist_ok=True)
+        with open(os.path.join(leaf_dir, 'deployment.yaml'), 'w') as f:
+            yaml.dump({'deployment': 'dep1'}, f)
+
+        precomputed = OrderedDict([('env', 'dev'), ('region', 'us-east-1')])
+        result = self.config_processor.process(
+            cwd=self.temp_dir,
+            path='env=dev/deployment=dep1',
+            skip_interpolation_validation=True,
+            precomputed_state=precomputed,
+        )
+
+        assert result['env'] == 'dev'
+        assert result['region'] == 'us-east-1'
+        assert result['deployment'] == 'dep1'
+
     def test_unicode_processing_disabled(self):
         """Test Unicode processing with allow_unicode=False"""
         config_data = {
@@ -465,6 +484,96 @@ class TestConfigGenerator:
         assert 'naïve' in yaml_output  # Accented characters preserved
         # Emoji might be escaped as \U0001F680 even with allow_unicode=True
         assert ('🚀' in yaml_output or '\\U0001F680' in yaml_output)
+
+    def test_process_hierarchy_with_precomputed(self):
+        """process_hierarchy_with_precomputed merges leaf YAML on top of precomputed state"""
+        leaf_dir = os.path.join(self.temp_dir, 'env=dev', 'deployment=dep1')
+        os.makedirs(leaf_dir, exist_ok=True)
+        with open(os.path.join(leaf_dir, 'deployment.yaml'), 'w') as f:
+            yaml.dump({'deployment': 'dep1', 'replica_count': 3}, f)
+
+        generator = ConfigGenerator(
+            cwd=self.temp_dir,
+            path='env=dev/deployment=dep1',
+            multi_line_string=False,
+            allow_unicode=False,
+            type_strategies=[(list, ["append_unique"]), (dict, ["merge"])],
+            fallback_strategies=["override"],
+            type_conflict_strategies=["override"]
+        )
+
+        precomputed = OrderedDict([('env', 'dev'), ('base_key', 'base_value')])
+        generator.process_hierarchy_with_precomputed(precomputed)
+
+        assert generator.generated_data['env'] == 'dev'
+        assert generator.generated_data['base_key'] == 'base_value'
+        assert generator.generated_data['deployment'] == 'dep1'
+        assert generator.generated_data['replica_count'] == 3
+
+    def test_process_hierarchy_with_precomputed_nonexistent_path(self):
+        """process_hierarchy_with_precomputed raises FileNotFoundError for missing path"""
+        generator = ConfigGenerator(
+            cwd=self.temp_dir,
+            path='nonexistent/path',
+            multi_line_string=False,
+            allow_unicode=False,
+            type_strategies=[(list, ["append_unique"]), (dict, ["merge"])],
+            fallback_strategies=["override"],
+            type_conflict_strategies=["override"]
+        )
+
+        with pytest.raises(FileNotFoundError):
+            generator.process_hierarchy_with_precomputed(OrderedDict())
+
+    def test_resolve_interpolations_pending_keys_on_second_pass(self):
+        """Second resolve_interpolations call uses targeted pending-key traversal"""
+        generator = ConfigGenerator(
+            cwd=self.temp_dir,
+            path='nonexistent',
+            multi_line_string=False,
+            allow_unicode=False,
+            type_strategies=[(list, ["append_unique"]), (dict, ["merge"])],
+            fallback_strategies=["override"],
+            type_conflict_strategies=["override"]
+        )
+        # Two-level chain: 'aval' is a PARTIAL interpolation (not a full {{...}} value),
+        # so FullBlobInjector won't resolve it; it must wait for pass 2 once bval is resolved.
+        # The interpolation regex also requires >=2 chars inside {{}} — hence multi-char keys.
+        generator.generated_data = OrderedDict([
+            ('cval', 'final'),
+            ('bval', '{{cval}}'),
+            ('aval', '{{bval}}-suffix'),
+        ])
+        assert generator._pending_keys is None
+
+        # Pass 1: full traversal — bval resolves, aval stays pending
+        generator.resolve_interpolations()
+        assert generator.generated_data['bval'] == 'final'
+        assert generator.generated_data['aval'] == '{{bval}}-suffix'
+        assert generator._pending_keys == {'aval'}
+
+        # Pass 2: targeted traversal on pending set — aval resolves
+        generator.resolve_interpolations()
+        assert generator.generated_data['aval'] == 'final-suffix'
+        assert generator._pending_keys == set()
+
+    def test_resolve_interpolations_skips_when_pending_empty(self):
+        """resolve_interpolations is a no-op when _pending_keys is an empty set"""
+        generator = ConfigGenerator(
+            cwd=self.temp_dir,
+            path='nonexistent',
+            multi_line_string=False,
+            allow_unicode=False,
+            type_strategies=[(list, ["append_unique"]), (dict, ["merge"])],
+            fallback_strategies=["override"],
+            type_conflict_strategies=["override"]
+        )
+        generator.generated_data = OrderedDict([('key', 'value')])
+        generator._pending_keys = set()  # empty — no interpolations remain
+
+        generator.resolve_interpolations()  # should be a no-op
+        assert generator.generated_data == OrderedDict([('key', 'value')])
+        assert generator._pending_keys == set()
 
     def test_unicode_in_nested_structures(self):
         """Test Unicode handling in nested data structures"""

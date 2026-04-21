@@ -11,10 +11,10 @@
 import pytest
 from himl.interpolation import (
     InterpolationResolver, EscapingResolver, InterpolationValidator,
-    FromDictInjector, FullBlobInjector,
+    FromDictInjector, FullBlobInjector, DictIterator,
     is_interpolation, is_escaped_interpolation, is_full_interpolation,
     is_fully_escaped_interpolation, remove_white_spaces,
-    replace_parent_working_directory
+    replace_parent_working_directory, collect_pending_keys
 )
 
 
@@ -293,3 +293,123 @@ class TestEscapingResolver:
         # The actual escaping logic would be implemented in DictEscapingResolver
         # This test verifies the method can be called without error
         assert result is not None
+
+
+class TestCollectPendingKeys:
+    """Tests for the collect_pending_keys helper"""
+
+    # Note: is_interpolation requires >=2 chars inside {{}} due to the regex
+    # pattern \{\{[^`].*?[^`]\}\} — use multi-char keys like {{env.name}}.
+
+    def test_string_with_interpolation(self):
+        pending = collect_pending_keys('{{env.name}}', 'mykey')
+        assert pending == {'mykey'}
+
+    def test_string_without_interpolation(self):
+        pending = collect_pending_keys('plain_value', 'mykey')
+        assert pending == set()
+
+    def test_dict_with_interpolation(self):
+        data = {'base': 'resolved', 'derived': '{{base_url}}', 'other': 'also_resolved'}
+        pending = collect_pending_keys(data)
+        assert pending == {'derived'}
+
+    def test_list_with_interpolation(self):
+        data = {'items': ['plain', '{{env.name}}', 'also_plain']}
+        pending = collect_pending_keys(data)
+        assert 'items.1' in pending
+        assert 'items.0' not in pending
+        assert 'items.2' not in pending
+
+    def test_nested_dict(self):
+        data = {'outer': {'inner': '{{ref.key}}'}}
+        pending = collect_pending_keys(data)
+        assert 'outer.inner' in pending
+
+    def test_no_interpolations(self):
+        data = {'aa': 'hello', 'bb': 42, 'cc': True}
+        assert collect_pending_keys(data) == set()
+
+    def test_empty_prefix(self):
+        data = {'key': '{{val.x}}'}
+        pending = collect_pending_keys(data)
+        assert 'key' in pending
+
+    def test_list_at_top_level(self):
+        data = ['{{aa.bb}}', 'plain', '{{cc.dd}}']
+        pending = collect_pending_keys(data)
+        assert '0' in pending
+        assert '1' not in pending
+        assert '2' in pending
+
+
+class TestDictIteratorLoopPendingItems:
+    """Tests for DictIterator.loop_pending_items"""
+
+    def test_resolves_pending_key(self):
+        iterator = DictIterator()
+        data = {'env': 'prod', 'url': '{{env}}-api.com'}
+        resolver = InterpolationResolver()
+        pending = {'url'}
+
+        still_pending = iterator.loop_pending_items(
+            data, lambda v: v.replace('{{env}}', 'prod'), pending
+        )
+
+        assert data['url'] == 'prod-api.com'
+        assert 'url' not in still_pending
+
+    def test_skips_missing_key_path(self):
+        """KeyError for a missing path is silently skipped"""
+        iterator = DictIterator()
+        data = {'a': 'hello'}
+        pending = {'nonexistent.path', 'also.missing'}
+
+        result = iterator.loop_pending_items(data, lambda v: v, pending)
+
+        assert isinstance(result, set)
+        assert data == {'a': 'hello'}
+
+    def test_handles_non_string_value_at_path(self):
+        """When the value at a pending path is a dict, loop_all_items is used"""
+        iterator = DictIterator()
+        data = {'a': {'b': '{{c}}'}}
+        pending = {'a'}
+
+        result = iterator.loop_pending_items(data, lambda v: v, pending)
+
+        assert isinstance(result, set)
+
+
+class TestInterpolationResolverWithPendingKeys:
+    """Tests for InterpolationResolver.resolve_interpolations with pending_keys"""
+
+    def test_resolve_with_pending_keys_returns_updated_set(self):
+        resolver = InterpolationResolver()
+        data = {'env': 'prod', 'url': '{{env}}-api.com', 'other': 'static'}
+        pending = {'url'}
+
+        still_pending = resolver.resolve_interpolations(data, pending_keys=pending)
+
+        assert data['url'] == 'prod-api.com'
+        assert isinstance(still_pending, set)
+        assert 'url' not in still_pending
+
+    def test_resolve_with_empty_pending_keys(self):
+        resolver = InterpolationResolver()
+        data = {'env': 'prod', 'url': '{{env}}-api.com'}
+        pending = set()
+
+        still_pending = resolver.resolve_interpolations(data, pending_keys=pending)
+
+        assert still_pending == set()
+        assert data['url'] == '{{env}}-api.com'  # untouched
+
+    def test_resolve_without_pending_keys_returns_data(self):
+        resolver = InterpolationResolver()
+        data = {'env': 'prod', 'url': '{{env}}-api.com'}
+
+        result = resolver.resolve_interpolations(data)
+
+        assert result is data
+        assert data['url'] == 'prod-api.com'
