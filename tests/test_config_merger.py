@@ -290,7 +290,8 @@ class TestConfigMergerFunctions:
             'output',
             False,  # enable_parallel default
             None,   # filter_rules_key default
-            False   # allow_unicode default
+            False,  # allow_unicode default
+            enable_precompute=False
         )
 
     def test_parser_default_values(self):
@@ -452,5 +453,6 @@ class TestConfigMergerFunctions:
             'output',
             False,  # enable_parallel default
             None,   # filter_rules_key default
-            True    # allow_unicode=True
+            True,   # allow_unicode=True
+            enable_precompute=False
         )

@@ -8,6 +8,8 @@
 # OF ANY KIND, either express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
 
+import copy
+import functools
 import json
 import os
 from collections import OrderedDict
@@ -18,13 +20,20 @@ import yaml
 from deepmerge import Merger
 
 from .interpolation import InterpolationResolver, EscapingResolver, InterpolationValidator, SecretResolver, \
-    DictIterator, replace_parent_working_directory, EnvVarResolver
+    DictIterator, replace_parent_working_directory, EnvVarResolver, collect_pending_keys
 from .python_compat import iteritems, primitive_types, PY3
 
 logging.basicConfig()
 logging.root.setLevel(logging.INFO)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+@functools.lru_cache(maxsize=None)
+def _yaml_get_content_cached(yaml_file):
+    with open(yaml_file, 'r') as f:
+        content = yaml.load(f, Loader=yaml.SafeLoader)
+    return content if content else {}
 
 
 class ConfigProcessor(object):
@@ -45,7 +54,8 @@ class ConfigProcessor(object):
                 allow_unicode=False,
                 type_strategies=[(list, ["append_unique"]), (dict, ["merge"])],
                 fallback_strategies=["override"],
-                type_conflict_strategies=["override"]):
+                type_conflict_strategies=["override"],
+                precomputed_state=None):
 
         # Prepare parameters and create generator
         path = self.get_relative_path(path)
@@ -54,7 +64,8 @@ class ConfigProcessor(object):
         cwd = cwd or os.getcwd()
 
         generator = self._create_and_initialize_generator(
-            cwd, path, multi_line_string, allow_unicode, type_strategies, fallback_strategies, type_conflict_strategies)
+            cwd, path, multi_line_string, allow_unicode, type_strategies, fallback_strategies,
+            type_conflict_strategies, precomputed_state=precomputed_state)
 
         # Process data exclusions and interpolations
         self._process_exclusions(generator, exclude_keys)
@@ -75,12 +86,15 @@ class ConfigProcessor(object):
         return skip_interpolation_validation or skip_interpolations or skip_secrets
 
     def _create_and_initialize_generator(self, cwd, path, multi_line_string, allow_unicode, type_strategies,
-                                         fallback_strategies, type_conflict_strategies):
+                                         fallback_strategies, type_conflict_strategies, precomputed_state=None):
         """Create and initialize the ConfigGenerator."""
         generator = ConfigGenerator(cwd, path, multi_line_string, allow_unicode, type_strategies, fallback_strategies,
                                     type_conflict_strategies)
         generator.generate_hierarchy()
-        generator.process_hierarchy()
+        if precomputed_state is not None:
+            generator.process_hierarchy_with_precomputed(precomputed_state)
+        else:
+            generator.process_hierarchy()
         return generator
 
     def _process_exclusions(self, generator, exclude_keys):
@@ -190,6 +204,7 @@ class ConfigGenerator(object):
         self.type_strategies = type_strategies
         self.fallback_strategies = fallback_strategies
         self.type_conflict_strategies = type_conflict_strategies
+        self._pending_keys = None
         if multi_line_string is True:
             yaml.representer.BaseRepresenter.represent_scalar = ConfigGenerator.custom_represent_scalar  # type: ignore
 
@@ -236,9 +251,7 @@ class ConfigGenerator(object):
 
     @staticmethod
     def yaml_get_content(yaml_file):
-        with open(yaml_file, 'r') as f:
-            content = yaml.load(f, Loader=yaml.SafeLoader)
-        return content if content else {}
+        return copy.deepcopy(_yaml_get_content_cached(yaml_file))
 
     @staticmethod
     def merge_value(reference, new_value, type_strategies, fallback_strategies, type_conflict_strategies):
@@ -329,6 +342,25 @@ class ConfigGenerator(object):
 
         self.generated_data = merged_values
 
+    def process_hierarchy_with_precomputed(self, precomputed_state):
+        full_target_path = os.path.join(self.cwd, self.path)
+        if not os.path.exists(full_target_path):
+            raise FileNotFoundError(f"Path does not exist: {full_target_path}")
+
+        merged_values = copy.deepcopy(precomputed_state)
+        leaf_yaml_files = self.hierarchy[-1] if self.hierarchy else []
+
+        for yaml_file in leaf_yaml_files:
+            yaml_content = self.yaml_get_content(yaml_file)
+            self.merge_yamls(merged_values, yaml_content, self.type_strategies,
+                             self.fallback_strategies, self.type_conflict_strategies)
+            self.resolve_simple_interpolations(merged_values, yaml_file)
+
+        if not merged_values:
+            raise Exception("No YAML files found to process in the hierarchy")
+
+        self.generated_data = merged_values
+
     def get_values_from_dir_path(self):
         values = {}
         full_path = pathlib2.Path(self.path)
@@ -379,18 +411,26 @@ class ConfigGenerator(object):
             remote_states = remote_state_retriever.get_dynamic_data(state_files)
             self.merge_value(self.generated_data, remote_states, self.type_strategies, self.fallback_strategies,
                              self.type_conflict_strategies)
+        self._pending_keys = None
 
     def resolve_interpolations(self):
         resolver = InterpolationResolver()
-        self.generated_data = resolver.resolve_interpolations(self.generated_data)
+        if self._pending_keys is None:
+            self.generated_data = resolver.resolve_interpolations(self.generated_data)
+            self._pending_keys = collect_pending_keys(self.generated_data)
+        elif self._pending_keys:
+            self._pending_keys = resolver.resolve_interpolations(
+                self.generated_data, pending_keys=self._pending_keys)
 
     def resolve_secrets(self, default_aws_profile):
         resolver = SecretResolver()
         self.generated_data = resolver.resolve_secrets(self.generated_data, default_aws_profile)
+        self._pending_keys = None
 
     def resolve_env(self):
         resolver = EnvVarResolver()
         self.generated_data = resolver.resolve_env_vars(self.generated_data)
+        self._pending_keys = None
 
     def validate_interpolations(self):
         self.interpolation_validator.check_all_interpolations_resolved(self.generated_data)
