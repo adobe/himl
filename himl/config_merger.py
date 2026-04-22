@@ -108,7 +108,7 @@ def build_parent_cache(directories, cwd=None):
     # Patch SafeLoader so !include tags work in yaml_get_content (same patch
     # that merge_logic applies, but build_parent_cache runs before merge_logic).
     Loader.add_constructor('!include', Loader.include)
-    yaml.SafeLoader = Loader  # type: ignore
+    yaml.SafeLoader.add_constructor('!include', Loader.include)
     cwd = cwd or os.getcwd()
     cache = {}
     for leaf_path in directories:
