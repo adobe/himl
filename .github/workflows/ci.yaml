@@ -65,7 +65,7 @@ jobs:
 
     - name: Upload coverage to Codecov
       if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.14'
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@v6
       with:
         files: ./coverage.xml
         flags: unittests
@@ -101,7 +101,7 @@ jobs:
 
     - name: Upload security reports
       if: always()
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: security-reports
         path: |
@@ -141,7 +141,7 @@ jobs:
         himl-config-merger --help
 
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: dist-${{ github.sha }}
         path: dist/
@@ -162,7 +162,7 @@ jobs:
         python-version: '3.14'
 
     - name: Download build artifacts
-      uses: actions/download-artifact@v7
+      uses: actions/download-artifact@v8
       with:
         name: dist-${{ github.sha }}
         path: dist/
@@ -198,10 +198,10 @@ jobs:
         fetch-depth: 0  # Needed for setuptools_scm
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      uses: docker/setup-buildx-action@v4
 
     - name: Build Docker image
-      uses: docker/build-push-action@v6
+      uses: docker/build-push-action@v7
       with:
         context: .
         push: false
