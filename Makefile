@@ -1,5 +1,5 @@
-# Use Python 3.13 where the packages are installed
-PYTHON := /opt/homebrew/bin/python3.13
+# Allow callers to override the Python executable, defaulting to the active python3.
+PYTHON ?= python3
 
 .PHONY: help install test lint format clean build release bump-patch bump-minor bump-major
 
