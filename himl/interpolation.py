@@ -88,7 +88,7 @@ def replace_parent_working_directory(value, cwd):
 
 class InterpolationResolver(object):
 
-    def resolve_interpolations(self, data):
+    def resolve_interpolations(self, data, pending_keys=None):
         # Resolve from dictionary. Do one iteration before secret resolving, in order to resolve interpolations such as
         # the aws.profile
         # Example:
@@ -96,8 +96,9 @@ class InterpolationResolver(object):
         # aws:
         #   profile: "{{my_profile}}"
         from_dict_injector = DictInterpolationResolver(data, FromDictInjector())
+        if pending_keys is not None:
+            return from_dict_injector.resolve_interpolations(data, pending_keys=pending_keys)
         from_dict_injector.resolve_interpolations(data)
-
         return data
 
 
@@ -154,6 +155,55 @@ class DictIterator(object):
                 data[key] = resolved_value
         return data
 
+    def loop_pending_items(self, data, process_func, pending_keys):
+        still_pending = set()
+        for key_path in list(pending_keys):
+            try:
+                node, final_key, value = _get_at_path(data, key_path)
+            except (KeyError, IndexError, TypeError):
+                continue
+            if isinstance(value, string_types):
+                new_value = process_func(value)
+            else:
+                new_value = self.loop_all_items(value, process_func)
+            _set_at_path(data, key_path, new_value)
+            still_pending.update(collect_pending_keys(new_value, key_path))
+        return still_pending
+
+
+def collect_pending_keys(data, prefix=""):
+    pending = set()
+    if isinstance(data, string_types):
+        if is_interpolation(data):
+            pending.add(prefix)
+    elif isinstance(data, list):
+        for i, item in enumerate(data):
+            child = "{}.{}".format(prefix, i) if prefix else str(i)
+            pending.update(collect_pending_keys(item, child))
+    elif isinstance(data, dict):
+        for key, value in iteritems(data):
+            child = "{}.{}".format(prefix, key) if prefix else str(key)
+            pending.update(collect_pending_keys(value, child))
+    return pending
+
+
+def _get_at_path(data, key_path):
+    parts = key_path.split(".")
+    node = data
+    for part in parts[:-1]:
+        node = node[int(part)] if isinstance(node, list) else node[part]
+    final = parts[-1]
+    value = node[int(final)] if isinstance(node, list) else node[final]
+    return node, final, value
+
+
+def _set_at_path(data, key_path, value):
+    node, final, _ = _get_at_path(data, key_path)
+    if isinstance(node, list):
+        node[int(final)] = value
+    else:
+        node[final] = value
+
 
 class AbstractEscapingResolver(DictIterator):
 
@@ -172,7 +222,9 @@ class AbstractEscapingResolver(DictIterator):
 
 class AbstractInterpolationResolver(DictIterator):
 
-    def resolve_interpolations(self, data):
+    def resolve_interpolations(self, data, pending_keys=None):
+        if pending_keys is not None:
+            return self.loop_pending_items(data, self.resolve_interpolation, pending_keys)
         return self.loop_all_items(data, self.resolve_interpolation)
 
     def resolve_interpolation(self, line):

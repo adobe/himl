@@ -7,9 +7,10 @@ COPY pyproject.toml ./
 COPY himl/ ./himl/
 COPY README.md ./
 COPY LICENSE ./
-COPY .git/ ./.git/
+RUN apt-get update && apt-get install -y make curl && rm -rf /var/lib/apt/lists/*
 
-RUN apt-get update && apt-get install -y make curl git && rm -rf /var/lib/apt/lists/*
+ARG SETUPTOOLS_SCM_PRETEND_VERSION=0.0.0
+ENV SETUPTOOLS_SCM_PRETEND_VERSION=${SETUPTOOLS_SCM_PRETEND_VERSION}
 
 # Install the package with all optional dependencies for full functionality
 RUN python -m pip install --upgrade pip && pip3 install .[all]

@@ -89,7 +89,45 @@ class Loader(yaml.SafeLoader):
 Loader.add_constructor('!include', Loader.include)
 
 
-def merge_configs(directories, levels, output_dir, enable_parallel, filter_rules, allow_unicode):
+def _group_by_parent(directories):
+    from collections import defaultdict
+    groups = defaultdict(list)
+    for path in directories:
+        groups[os.path.dirname(path)].append(path)
+    return list(groups.values())
+
+
+def merge_logic_batch(batch_params):
+    for process_params in batch_params:
+        merge_logic(process_params)
+
+
+def build_parent_cache(directories, cwd=None):
+    import copy
+    from .config_generator import ConfigGenerator
+    # Patch SafeLoader so !include tags work in yaml_get_content (same patch
+    # that merge_logic applies, but build_parent_cache runs before merge_logic).
+    Loader.add_constructor('!include', Loader.include)
+    yaml.SafeLoader.add_constructor('!include', Loader.include)
+    cwd = cwd or os.getcwd()
+    cache = {}
+    for leaf_path in directories:
+        parent_path = os.path.abspath(os.path.dirname(leaf_path))
+        if parent_path in cache:
+            continue
+        rel_parent = os.path.relpath(parent_path, cwd)
+        gen = ConfigGenerator(cwd, rel_parent, False, False,
+                              [(list, ["append_unique"]), (dict, ["merge"])],
+                              ["override"], ["override"])
+        gen.generate_hierarchy()
+        gen.process_hierarchy()
+        cache[parent_path] = copy.deepcopy(gen.generated_data)
+    logger.info("Pre-computed parent hierarchy for %d unique parent paths", len(cache))
+    return cache
+
+
+def merge_configs(directories, levels, output_dir, enable_parallel, filter_rules, allow_unicode,
+                  enable_precompute=False):
     """
     Method for running the merge configuration logic under different formats
     :param directories: list of paths for leaf directories
@@ -97,16 +135,28 @@ def merge_configs(directories, levels, output_dir, enable_parallel, filter_rules
     :param output_dir: where to save the generated configs
     :param enable_parallel: to enable parallel config generation
     :param allow_unicode: allow unicode characters in output
+    :param enable_precompute: pre-compute merged parent hierarchy before dispatching workers
     """
     config_processor = ConfigProcessor()
+
+    parent_cache = build_parent_cache(directories) if enable_precompute else {}
+
     process_config = []
     for path in directories:
-        process_config.append((config_processor, path, levels, output_dir, filter_rules, allow_unicode))
+        parent_state = parent_cache.get(os.path.abspath(os.path.dirname(path)))
+        process_config.append((config_processor, path, levels, output_dir, filter_rules, allow_unicode, parent_state))
 
     if enable_parallel:
         logger.info("Processing config in parallel")
+        batches = _group_by_parent(directories)
+        batch_params = [
+            [(config_processor, path, levels, output_dir, filter_rules, allow_unicode,
+              parent_cache.get(os.path.abspath(os.path.dirname(path))))
+             for path in batch]
+            for batch in batches
+        ]
         with Pool(cpu_count()) as p:
-            p.map(merge_logic, process_config)
+            p.map(merge_logic_batch, batch_params)
     else:
         for config in process_config:
             merge_logic(config)
@@ -123,6 +173,7 @@ def merge_logic(process_params):
     output_dir = process_params[3]
     filter_rules = process_params[4]
     allow_unicode = process_params[5]
+    precomputed_state = process_params[6] if len(process_params) > 6 else None
 
     # load the !include tag
     Loader.add_constructor('!include', Loader.include)
@@ -133,7 +184,8 @@ def merge_logic(process_params):
     # for path in directories:
     # use the HIML deep merge functionality
     output = dict(
-        config_processor.process(path=path, output_format="yaml", print_data=False, multi_line_string=True))
+        config_processor.process(path=path, output_format="yaml", print_data=False, multi_line_string=True,
+                                 precomputed_state=precomputed_state))
     # exchange the levels to which to run for with the values extracted from the yaml structure
     level_values = [output.get(level) for level in levels]
 
@@ -207,6 +259,8 @@ def get_parser():
                         help='keep these keys from the generated data, based on the configured filter key')
     parser.add_argument('--allow-unicode', dest='allow_unicode', default=False,
                         action='store_true', help='allow unicode characters in output (default: False, outputs escape sequences)')
+    parser.add_argument('--enable-precompute', dest='enable_precompute', default=False,
+                        action='store_true', help='Pre-compute merged parent hierarchy states before parallel processing')
     return parser
 
 
@@ -223,4 +277,5 @@ def run(args=None):
 
     # merge the configs using HIML
     merge_configs(dirs, opts.hierarchy_levels,
-                  opts.output_dir, opts.enable_parallel, opts.filter_rules, opts.allow_unicode)
+                  opts.output_dir, opts.enable_parallel, opts.filter_rules, opts.allow_unicode,
+                  enable_precompute=opts.enable_precompute)
