@@ -28,7 +28,7 @@ classifiers = [
 requires-python = ">=3.10"
 dependencies = [
     "PyYAML==6.0.3",
-    "deepmerge==2.1.0",
+    "deepmerge==3.0.1",
     "pathlib2==2.3.7.post1",
 ]
 
