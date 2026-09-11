@@ -47,10 +47,10 @@ dev = [
     "flake8==7.3.0",
     "mypy==2.3.1",
     "types-PyYAML==6.0.12.20260906",
-    "boto3==1.43.89",
+    "boto3==1.43.93",
     "hvac==2.4.0",
     "bump-my-version==1.5.1",
-    "build==1.6.0",
+    "build==1.6.1",
     "twine==7.0.0",
 ]
 
