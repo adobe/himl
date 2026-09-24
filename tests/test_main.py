@@ -9,6 +9,8 @@
 # governing permissions and limitations under the License.
 
 import os
+import subprocess
+import sys
 import tempfile
 import shutil
 
@@ -399,3 +401,9 @@ class TestConfigRunner:
         # Verify output contains Unicode characters
         output = mock_stdout.getvalue()
         assert 'greeting' in output or 'Hello' in output  # Basic verification that something was output
+
+    def test_import_does_not_configure_root_logger(self):
+        """Importing himl should not add handlers to the root logger"""
+        code = "import logging, himl; print(len(logging.root.handlers))"
+        output = subprocess.check_output([sys.executable, '-c', code], text=True)
+        assert output.strip() == '0'

@@ -23,9 +23,6 @@ from .interpolation import InterpolationResolver, EscapingResolver, Interpolatio
     DictIterator, replace_parent_working_directory, EnvVarResolver, collect_pending_keys
 from .python_compat import iteritems, primitive_types, PY3
 
-logging.basicConfig()
-logging.root.setLevel(logging.INFO)
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
