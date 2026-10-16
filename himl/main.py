@@ -9,6 +9,7 @@
 # governing permissions and limitations under the License.
 
 import argparse
+import logging
 import os
 from .config_generator import ConfigProcessor
 from enum import Enum
@@ -87,4 +88,5 @@ class ConfigRunner(object):
 
 
 def run(args=None):
+    logging.basicConfig(level=logging.INFO)
     ConfigRunner().run(args)
