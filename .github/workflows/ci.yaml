@@ -11,14 +11,29 @@ env:
   FORCE_COLOR: 1
 
 jobs:
+  python-versions:
+    name: Discover supported Python versions
+    runs-on: ubuntu-latest
+    outputs:
+      versions: ${{ steps.versions.outputs.versions }}
+      latest: ${{ steps.versions.outputs.latest }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v7
+
+    - name: Get supported stable Python versions
+      id: versions
+      run: python3 .github/scripts/python_versions.py >> "$GITHUB_OUTPUT"
+
   test:
     name: Test Python ${{ matrix.python-version }} on ${{ matrix.os }}
+    needs: python-versions
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
+        python-version: ${{ fromJSON(needs.python-versions.outputs.versions) }}
 
     steps:
     - name: Checkout code
@@ -64,7 +79,7 @@ jobs:
         python -m pytest tests/ -v --tb=short --cov=himl --cov-report=xml --cov-report=term-missing --cov-fail-under=80
 
     - name: Upload coverage to Codecov
-      if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.14'
+      if: matrix.os == 'ubuntu-latest' && matrix.python-version == needs.python-versions.outputs.latest
       uses: codecov/codecov-action@v7
       with:
         files: ./coverage.xml
