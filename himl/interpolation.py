@@ -317,10 +317,10 @@ class FromDictInjector(object):
             placeholder = "{{" + key + "}}"
             if placeholder not in line:
                 continue
-            elif isinstance(value, (int, bool)):
-                return value
             elif not is_interpolation(value):
-                line = line.replace(placeholder, value)
+                if line == placeholder:
+                    return value
+                line = line.replace(placeholder, str(value))
         return line
 
     def _parse_leaves_cached(self, data, partial_key, cache_dict):
