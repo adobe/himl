@@ -81,6 +81,7 @@ Idea came from puppet's hiera.
       - [AWS SSM](#aws-ssm)
       - [AWS S3](#aws-s3)
       - [Vault](#vault)
+      - [vals (optional)](#vals-optional)
     - [Merge with Terraform remote state](#merge-with-terraform-remote-state)
     - [Merge with env variables](#merge-with-env-variables)
     - [Unicode Support](#unicode-support)
@@ -317,6 +318,37 @@ Generate a token for a policy:
 ```yaml
 my_token: "{{vault.token_policy(my_vault_policy)}}"
 ```
+
+#### vals (optional)
+
+[vals](https://github.com/helmfile/vals) provides additional secret backends,
+including AWS Secrets Manager, GCP Secret Manager, and Azure Key Vault.
+Install the `vals` executable separately and make it available on `PATH`
+(for example, `brew install vals` on macOS). No additional Python package is
+required, and existing SSM, S3, Vault, and SOPS resolvers are unchanged.
+
+Wrap a vals reference in `{{vals.ref(...)}}`:
+
+```yaml
+password: "{{vals.ref(ref+awssecrets://app/database?region=us-east-1#/password)}}"
+```
+
+Provider authentication uses vals' own configuration and the inherited process
+environment, such as `AWS_PROFILE`, `AWS_REGION`, or `VAULT_TOKEN`. Himl's
+`default_aws_profile` is not forwarded to vals. See the
+[vals provider documentation](https://github.com/helmfile/vals#supported-backends)
+for reference syntax and authentication details.
+
+Resolution preserves JSON value types and string whitespace, reuses himl's
+secret interpolation cache, and times out after 60 seconds per call. Missing
+executables, provider failures, and invalid output raise errors; subprocess
+output is not included in error messages because it may contain secrets.
+Plain `ref+...://` strings are not resolved unless wrapped in `{{vals.ref(...)}}`.
+
+Use only trusted configuration: vals supports providers that execute commands
+or read local files. The existing interpolation parser does not support literal
+parentheses inside `ref(...)`; use provider-supported percent-encoding where
+applicable.
 
 ### Merge with [Terraform remote state](https://www.terraform.io/docs/state/remote.html)
 

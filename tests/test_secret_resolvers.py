@@ -8,6 +8,9 @@
 # OF ANY KIND, either express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
 
+import json
+import subprocess
+
 import pytest
 import sys
 from unittest.mock import patch, MagicMock
@@ -288,13 +291,107 @@ class TestSopsSecretResolver:
         assert "Could not find required key" in str(exc_info.value)
 
 
+class TestValsSecretResolver:
+    @pytest.mark.parametrize("value", [
+        "secret", "", "line one\nline two\n", 42, False, None,
+        ["one", "two"], {"username": "alice", "password": "secret"},
+    ])
+    @patch('subprocess.run')
+    def test_resolve_preserves_value(self, mock_run, value):
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=[], returncode=0, stdout=json.dumps({"value": value}), stderr="")
+        reference = "ref+awssecrets://app/database?region=us-east-1#/password"
+
+        result = AggregatedSecretResolver().resolve('vals', {'ref': reference})
+
+        assert result == value
+        args, kwargs = mock_run.call_args
+        assert args == (["vals", "eval", "-f", "-", "-o", "json"],)
+        assert json.loads(kwargs["input"]) == {"value": reference}
+        assert kwargs["capture_output"] is True
+        assert kwargs["text"] is True
+        assert kwargs["encoding"] == "utf-8"
+        assert kwargs["timeout"] == 60
+        assert not kwargs.get("shell", False)
+
+    @pytest.mark.parametrize("params", [
+        {}, {'ref': None}, {'ref': ''}, {'ref': 42},
+        {'ref': 'not-a-reference'}, {'ref': 'ref+vault'},
+        {'ref': 'ref+://path'}, {'ref': 'ref+vault://'},
+    ])
+    @patch('subprocess.run')
+    def test_rejects_invalid_reference(self, mock_run, params):
+        with pytest.raises(ValueError, match="ref"):
+            AggregatedSecretResolver().resolve('vals', params)
+
+        mock_run.assert_not_called()
+
+    @patch('subprocess.run', side_effect=FileNotFoundError("sensitive reference"))
+    def test_missing_executable(self, mock_run):
+        with pytest.raises(RuntimeError, match="Install vals") as exc_info:
+            AggregatedSecretResolver().resolve('vals', {'ref': 'ref+echo://sensitive'})
+
+        assert "sensitive" not in str(exc_info.value)
+        assert exc_info.value.__suppress_context__
+
+    @patch('subprocess.run', side_effect=subprocess.TimeoutExpired(
+        cmd=["vals"], timeout=60, output="sensitive", stderr="sensitive"))
+    def test_timeout_does_not_expose_secrets(self, mock_run):
+        with pytest.raises(RuntimeError, match="timed out") as exc_info:
+            AggregatedSecretResolver().resolve('vals', {'ref': 'ref+echo://sensitive'})
+
+        assert "sensitive" not in str(exc_info.value)
+        assert exc_info.value.__suppress_context__
+
+    @patch('subprocess.run', side_effect=PermissionError("sensitive reference"))
+    def test_unusable_executable(self, mock_run):
+        with pytest.raises(RuntimeError, match="Could not execute vals") as exc_info:
+            AggregatedSecretResolver().resolve('vals', {'ref': 'ref+echo://sensitive'})
+
+        assert "sensitive" not in str(exc_info.value)
+        assert exc_info.value.__suppress_context__
+
+    @patch('subprocess.run', side_effect=UnicodeDecodeError(
+        "utf-8", b"sensitive\xff", 9, 10, "invalid byte"))
+    def test_invalid_encoding_does_not_expose_secrets(self, mock_run):
+        with pytest.raises(RuntimeError, match="invalid UTF-8 response") as exc_info:
+            AggregatedSecretResolver().resolve('vals', {'ref': 'ref+echo://sensitive'})
+
+        assert "sensitive" not in str(exc_info.value)
+        assert exc_info.value.__suppress_context__
+
+    @patch('subprocess.run')
+    def test_nonzero_exit_does_not_expose_secrets(self, mock_run):
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=[], returncode=1, stdout="sensitive", stderr="sensitive")
+
+        with pytest.raises(RuntimeError, match="exit code 1") as exc_info:
+            AggregatedSecretResolver().resolve('vals', {'ref': 'ref+echo://sensitive'})
+
+        assert "sensitive" not in str(exc_info.value)
+
+    @pytest.mark.parametrize("output", [
+        'sensitive', '', '[]', '{}', 'null',
+    ])
+    @patch('subprocess.run')
+    def test_invalid_output_does_not_expose_secrets(self, mock_run, output):
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=[], returncode=0, stdout=output, stderr="sensitive")
+
+        with pytest.raises(RuntimeError, match="invalid JSON response") as exc_info:
+            AggregatedSecretResolver().resolve('vals', {'ref': 'ref+echo://sensitive'})
+
+        assert "sensitive" not in str(exc_info.value)
+        assert exc_info.value.__suppress_context__
+
+
 class TestAggregatedSecretResolver:
     """Test AggregatedSecretResolver class"""
 
     def test_initialization(self):
         """Test AggregatedSecretResolver initialization"""
         resolver = AggregatedSecretResolver(default_aws_profile='test-profile')
-        assert len(resolver.secret_resolvers) == 4
+        assert len(resolver.secret_resolvers) == 5
         assert any(isinstance(r, SSMSecretResolver) for r in resolver.secret_resolvers)
         assert any(isinstance(r, S3SecretResolver) for r in resolver.secret_resolvers)
         assert any(isinstance(r, VaultSecretResolver) for r in resolver.secret_resolvers)
