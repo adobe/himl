@@ -557,13 +557,24 @@ flake8 .
 
 This project uses GitHub Actions for continuous integration. The CI pipeline:
 
-- **Tests**: Runs on Python 3.10-3.14 across Ubuntu and macOS
+- **Tests**: Discovers all supported stable Python versions on each run and tests them across Ubuntu and macOS
 - **Security**: Runs bandit security checks and safety dependency checks
 - **Build**: Builds and validates the package
 - **Integration**: Tests CLI tools and package installation
 - **Coverage**: Reports test coverage to Codecov
 
 All tests must pass and maintain good test coverage before merging PRs.
+
+The test matrix uses the [official Python release-cycle feed](https://peps.python.org/api/release-cycle.json)
+that powers the [Python Developer's Guide](https://devguide.python.org/versions/).
+Only versions in the `bugfix` or `security` phase are included; prerelease and end-of-life versions are excluded.
+Coverage is uploaded from the newest discovered version on Ubuntu.
+Discovery retries network failures three times and fails CI if the feed is unavailable or invalid; it never
+silently skips the test matrix. New Python releases can therefore expose dependency incompatibilities without
+a repository change.
+
+The package requires Python 3.11 or newer. CI discovery does not automatically change this minimum or the
+package's version classifiers; those remain explicit release decisions when upstream support changes.
 
 ### Version Management
 
