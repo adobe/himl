@@ -7,9 +7,15 @@
 
 A hierarchical config using yaml in Python.
 
-Latest version is: **0.20.0**
+Latest version is: **0.23.0**
 
-### Unreleased: breaking merge behavior (deepmerge 4)
+## Release 0.23.0
+
+### Breaking changes
+
+Python 3.11 or newer is now required; Python 3.10 is no longer supported.
+
+#### Merge behavior (deepmerge 4)
 
 The upgrade from deepmerge 2.1.0 to 4.0.0 changes the default `append_unique`
 strategy. When a list is merged with an inherited list, repeated incoming values
@@ -30,6 +36,15 @@ For Python callers explicitly using `type_conflict_strategies=["override_if_not_
 incoming `0`, `False`, and `0.0` now override inherited values instead of being
 ignored. HIML's default `override` strategy is unaffected.
 
+### Other changes
+
+- Importing HIML no longer configures the root logger or changes its level.
+  CLI logging remains configured at INFO.
+- CI now discovers supported stable Python versions automatically.
+- Runtime, development, and GitHub Actions dependencies have been updated.
+
+See the [full changelog](https://github.com/adobe/himl/compare/0.22.0...0.23.0).
+
 > **⚠️ Breaking Changes in v0.18.0**
 > This version includes breaking changes:
 > - Default list merge strategy changed from `append` to `append_unique`
@@ -47,6 +62,7 @@ Idea came from puppet's hiera.
 ## Table of Contents
 
 - [himl](#himl)
+  - [Release 0.23.0](#release-0230)
   - [Description](#description)
   - [Table of Contents](#table-of-contents)
   - [Installation](#installation)
@@ -603,29 +619,22 @@ This project uses [bump-my-version](https://github.com/callowayproject/bump-my-v
 
 #### Bumping Versions
 
-Use the provided Makefile commands:
+For a release PR, preview and apply an explicit version without creating a commit
+or tag:
 
 ```bash
-# Show what version bumps would result in
-make show-bump
-
-# Dry run version bumps (to see what would change)
-make dry-bump-patch   # 0.16.4 -> 0.16.5
-make dry-bump-minor   # 0.16.4 -> 0.17.0
-make dry-bump-major   # 0.16.4 -> 1.0.0
-
-# Actually bump the version
-make bump-patch       # For bug fixes
-make bump-minor       # For new features
-make bump-major       # For breaking changes
+bump-my-version bump --new-version X.Y.Z --no-commit --no-tag --dry-run
+bump-my-version bump --new-version X.Y.Z --no-commit --no-tag
 ```
 
-The version bump will:
-1. Update the version in `pyproject.toml`
-2. Update the version in `README.md`
-3. Update the version in `himl/main.py` (CLI help)
-4. Create a Git commit with the changes
-5. Create a Git tag with the new version
+This updates the bump configuration in `pyproject.toml`, the README version, and
+the CLI version in `himl/main.py`. Update the release notes, validate the changes,
+and open a PR. Package metadata continues to use a development version until the
+merged release commit is tagged.
+
+The `make bump-patch`, `make bump-minor`, and `make bump-major` shortcuts also
+create a commit and tag; do not use them when preparing a release PR.
+See [RELEASE.md](RELEASE.md) for validation and post-merge publishing steps.
 
 ### Contributing
 

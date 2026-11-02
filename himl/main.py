@@ -82,7 +82,7 @@ class ConfigRunner(object):
                             help='override default merge strategy for list')
         parser.add_argument('--allow-unicode', dest='allow_unicode', action='store_true', default=False,
                             help='allow unicode characters in output (default: False, outputs escape sequences)')
-        parser.add_argument('--version', action='version', version='%(prog)s v{version}'.format(version="0.20.0"),
+        parser.add_argument('--version', action='version', version='%(prog)s v{version}'.format(version="0.23.0"),
                             help='print himl version')
         return parser
 
