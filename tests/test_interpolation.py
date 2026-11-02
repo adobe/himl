@@ -122,6 +122,17 @@ class TestFromDictInjector:
         result = injector.resolve("{{env}}-{{region}}", data)
         assert result == "prod-us-east-1"
 
+    @pytest.mark.parametrize("reverse_order", [False, True])
+    def test_multiple_scalar_interpolations_preserve_string_context(self, reverse_order):
+        items = [('port', 8080), ('enabled', False)]
+        data = dict(reversed(items) if reverse_order else items)
+
+        result = FromDictInjector().resolve(
+            "port={{port}}, enabled={{enabled}}, again={{port}}", data
+        )
+
+        assert result == "port=8080, enabled=False, again=8080"
+
     def test_parse_leaves(self):
         """Test parse_leaves method"""
         injector = FromDictInjector()
@@ -197,6 +208,30 @@ class TestFullBlobInjector:
 
 class TestInterpolationResolver:
     """Test InterpolationResolver class"""
+
+    @pytest.mark.parametrize(
+        "value, expected",
+        [(42, "42"), (0, "0"), (-1, "-1"), (3.14, "3.14"), (True, "True"), (False, "False")],
+    )
+    def test_nested_scalar_interpolation_preserves_string_context(self, value, expected):
+        data = {
+            'foo': {'bar': value},
+            'resources': {
+                'test': {
+                    'properties': {
+                        'path': 'hello {{foo.bar}} world',
+                        'raw': '{{foo.bar}}',
+                    }
+                }
+            },
+        }
+
+        result = InterpolationResolver().resolve_interpolations(data)
+
+        properties = result['resources']['test']['properties']
+        assert properties['path'] == "hello " + expected + " world"
+        assert properties['raw'] == value
+        assert type(properties['raw']) is type(value)
 
     def test_resolve_interpolations(self):
         """Test interpolation resolution"""
