@@ -8,6 +8,8 @@
 # OF ANY KIND, either express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
 
+import copy
+import json
 import os
 import tempfile
 import shutil
@@ -17,10 +19,89 @@ from collections import OrderedDict
 
 
 from himl import ConfigProcessor, ConfigGenerator
+from himl.yaml_tags import DELETE
 
 
 class TestConfigProcessor:
     """Test cases for ConfigProcessor class"""
+
+    @pytest.mark.parametrize("output_format", ["yaml", "json"])
+    def test_delete_hierarchy_output_before_interpolation(self, tmp_path, output_format):
+        (tmp_path / 'globals.yaml').write_text(
+            'modules_to_deploy:\n  module1: config-mod1\n  module2: config-mod2\n  module3: config-mod3\n'
+            'discarded:\n  invalid: "{{missing.key}}"\n'
+            'copy: "{{modules_to_deploy}}"\nnullable: null\nliteral: "!delete"\n'
+        )
+        site = tmp_path / 'special_dr_site'
+        site.mkdir()
+        (site / 'site.yaml').write_text(
+            'modules_to_deploy:\n  module2: !delete\ndiscarded: !delete\n'
+        )
+        output = tmp_path / ('merged.' + output_format)
+
+        result = self.config_processor.process(
+            cwd=str(tmp_path), path='special_dr_site',
+            output_format=output_format, output_file=str(output),
+        )
+
+        expected = {
+            'modules_to_deploy': {'module1': 'config-mod1', 'module3': 'config-mod3'},
+            'copy': {'module1': 'config-mod1', 'module3': 'config-mod3'},
+            'nullable': None,
+            'literal': '!delete',
+        }
+        assert result == expected
+        parsed = yaml.safe_load(output.read_text()) if output_format == 'yaml' else json.loads(output.read_text())
+        assert parsed == expected
+
+    def test_delete_hierarchy_file_order_and_reintroduction(self, tmp_path):
+        (tmp_path / 'a_default.yaml').write_text('config:\n  old: inherited\n')
+        (tmp_path / 'b_remove.yaml').write_text('config: !delete\n')
+        site = tmp_path / 'site'
+        site.mkdir()
+        (site / 'config.yaml').write_text('config:\n  new: recreated\n')
+
+        result = self.config_processor.process(cwd=str(tmp_path), path='site')
+
+        assert result == {'config': {'new': 'recreated'}}
+
+    @pytest.mark.parametrize("skip_validation", [False, True])
+    def test_delete_leaves_references_subject_to_validation(self, tmp_path, skip_validation):
+        (tmp_path / 'a_default.yaml').write_text('config:\n  gone: inherited\nreference: "{{config.gone}}"\n')
+        (tmp_path / 'b_remove.yaml').write_text('config:\n  gone: !delete\n')
+        kwargs = dict(
+            cwd=str(tmp_path), path='.',
+            skip_interpolation_validation=skip_validation,
+        )
+
+        if skip_validation:
+            result = self.config_processor.process(**kwargs)
+            assert result == {'config': {}, 'reference': '{{config.gone}}'}
+        else:
+            with pytest.raises(Exception, match="Interpolation could not be resolved"):
+                self.config_processor.process(**kwargs)
+
+    @pytest.mark.parametrize("precompute", [False, True])
+    @pytest.mark.parametrize("delete_in_parent", [False, True])
+    def test_delete_all_keys_accepts_empty_output(self, tmp_path, monkeypatch, precompute, delete_in_parent):
+        from himl.config_merger import build_parent_cache
+
+        monkeypatch.setattr(yaml, 'SafeLoader', yaml.SafeLoader)
+        (tmp_path / 'a_default.yaml').write_text('gone: inherited\n')
+        site = tmp_path / 'site'
+        site.mkdir()
+        location = tmp_path if delete_in_parent else site
+        (location / 'b_remove.yaml').write_text('gone: !delete\n')
+        state = None
+        if precompute:
+            cache = build_parent_cache([str(site)], cwd=str(tmp_path))
+            state = cache[str(tmp_path)]
+
+        result = self.config_processor.process(
+            cwd=str(tmp_path), path='site', precomputed_state=state,
+        )
+
+        assert result == {}
 
     def setup_method(self):
         """Set up test fixtures"""
@@ -414,6 +495,25 @@ class TestConfigGenerator:
         content = generator.yaml_get_content(yaml_file)
         assert content == config_data
 
+    def test_yaml_delete_tag_loading_and_cache_copy(self, tmp_path):
+        source = tmp_path / 'config.yaml'
+        source.write_text('gone: !delete\nnull_value: null\nliteral: "!delete"\n')
+        constructors = dict(yaml.SafeLoader.yaml_constructors)
+
+        content = ConfigGenerator.yaml_get_content(str(source))
+        assert content == {'gone': DELETE, 'null_value': None, 'literal': '!delete'}
+        content.pop('gone')
+        assert ConfigGenerator.yaml_get_content(str(source))['gone'] is DELETE
+        assert yaml.SafeLoader.yaml_constructors == constructors
+
+    @pytest.mark.parametrize("payload", ["value", "{}", "[]"])
+    def test_yaml_delete_tag_rejects_payload(self, tmp_path, payload):
+        source = tmp_path / 'config.yaml'
+        source.write_text('gone: !delete ' + payload + '\n')
+
+        with pytest.raises(yaml.constructor.ConstructorError):
+            ConfigGenerator.yaml_get_content(str(source))
+
     def test_yaml_merging(self):
         """Test YAML merging functionality"""
         generator = ConfigGenerator(
@@ -442,6 +542,87 @@ class TestConfigGenerator:
         assert 'f2' in base_config['features']
         assert 'f3' in base_config['features']
         assert base_config['new_key'] == 'value'
+
+    @pytest.mark.parametrize(
+        "base, incoming, expected",
+        [
+            ({'gone': 42, 'keep': 1}, {'gone': DELETE}, {'keep': 1}),
+            ({'gone': {'child': 1}}, {'gone': DELETE}, {}),
+            ({'gone': None}, {'gone': DELETE}, {}),
+            ({'keep': 1}, {'missing': DELETE}, {'keep': 1}),
+            ({}, {'new': {'gone': DELETE}}, {'new': {}}),
+            (
+                {'modules': {'module1': 1, 'module2': 2, 'module3': 3}},
+                {'modules': {'module2': DELETE}},
+                {'modules': {'module1': 1, 'module3': 3}},
+            ),
+            (
+                {'outer': {'inner': {'gone': 1}}},
+                {'outer': {'inner': {'gone': DELETE}}},
+                {'outer': {'inner': {}}},
+            ),
+            (
+                {'module.name': 1, 'module': {'name': 2}},
+                {'module.name': DELETE},
+                {'module': {'name': 2}},
+            ),
+        ],
+    )
+    def test_delete_mapping_keys(self, base, incoming, expected):
+        original = copy.deepcopy(incoming)
+
+        ConfigGenerator.merge_yamls(
+            base, incoming, [(list, ["append_unique"]), (dict, ["merge"])], ["override"], ["override"]
+        )
+
+        assert base == expected
+        assert incoming == original
+
+    def test_delete_can_be_repeated_and_reintroduced(self):
+        base = {'config': {'old': 1}}
+        for incoming in [{'config': DELETE}, {'config': DELETE}, {'config': {'new': 2}}]:
+            ConfigGenerator.merge_yamls(base, incoming, [(dict, ["merge"])], ["override"], ["override"])
+
+        assert base == {'config': {'new': 2}}
+
+    @pytest.mark.parametrize(
+        "incoming",
+        [
+            DELETE,
+            {DELETE: 'invalid key'},
+            {'items': [DELETE]},
+            {'items': [{'nested': DELETE}]},
+            {'items': {DELETE}},
+            {'items': (DELETE,)},
+        ],
+    )
+    def test_delete_rejects_unsupported_locations(self, incoming):
+        with pytest.raises(ValueError, match="!delete"):
+            ConfigGenerator.merge_yamls({}, incoming, [(dict, ["merge"])], ["override"], ["override"])
+
+    def test_delete_preserves_nulls_and_literal_tag_strings(self):
+        base = {'config': {'nullable': 'old', 'gone': 1}}
+        incoming = {'config': {'nullable': None, 'gone': DELETE}, 'new_null': None, 'literal': '!delete'}
+
+        ConfigGenerator.merge_yamls(base, incoming, [(dict, ["merge"])], ["override"], ["override"])
+
+        assert base == {'config': {'nullable': None}, 'new_null': None, 'literal': '!delete'}
+        with pytest.raises(Exception, match="mismatch in type"):
+            ConfigGenerator.merge_yamls(
+                {'existing': 'text'}, {'existing': None}, [(dict, ["merge"])], ["override"], ["override"]
+            )
+
+    def test_delete_preserves_custom_dictionary_strategy(self):
+        def capture_inputs(config, path, base, incoming):
+            return {'base': base, 'incoming': incoming}
+
+        base = {'config': {'gone': 1, 'keep': 2}}
+        ConfigGenerator.merge_yamls(
+            base, {'config': {'gone': DELETE, 'new': 3}},
+            [(dict, capture_inputs)], ["override"], ["override"]
+        )
+
+        assert base == {'config': {'base': {'keep': 2}, 'incoming': {'new': 3}}}
 
     def test_output_data_yaml(self):
         """Test YAML output formatting"""

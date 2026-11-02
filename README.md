@@ -285,6 +285,57 @@ tagging: "{{projects.{{project.name}}.tagging}}"
 It's possible to have the same key (eg. a dict/list) in multiple files and combine them using a deep merge.
 See an example [here](https://github.com/adobe/himl#deep-merge-example).
 
+#### Removing inherited keys
+
+Use the custom YAML tag `!delete` to remove a dictionary key inherited from an
+earlier file. Unlike `null`, this removes the key rather than assigning a value.
+
+`data/globals.yaml`:
+
+```yaml
+modules_to_deploy:
+  module1: config-mod1
+  module2: config-mod2
+  module3: config-mod3
+```
+
+`data/special_dr_site/site.yaml`:
+
+```yaml
+modules_to_deploy:
+  module2: !delete
+```
+
+Running `himl --cwd data special_dr_site` produces:
+
+```yaml
+modules_to_deploy:
+  module1: config-mod1
+  module3: config-mod3
+```
+
+Deletion works at any dictionary depth through the Python API, `himl`, and
+`himl-config-merger`, including precomputed and parallel processing. It is applied
+as each file is merged, before interpolation, environment variables, or secrets
+are resolved. Files follow the existing hierarchy order and alphabetical order
+within each directory. A later file can recreate a deleted key without restoring
+its old contents.
+
+Deleting a missing key does nothing. Deleting a dictionary removes its entire
+subtree; deleting its final child leaves an empty dictionary. Deleting all
+top-level keys produces `{}`. References to deleted keys elsewhere still follow
+the normal interpolation-validation rules.
+
+Only the empty tag form shown above is accepted: do not supply a payload such as
+`!delete null`. The tag is supported only as a dictionary value, not as a key,
+a whole document, or anywhere inside a list or set. Quoted `"!delete"` remains
+an ordinary string, and existing `null` behavior is unchanged. The tag also works
+in files loaded with the merger's [existing `!include` support](#extra-merger-features).
+
+`!delete` is a Himl-specific extension using standard YAML tag syntax. Other
+tools reading these source files need a registered constructor for the tag;
+generated YAML/JSON contains no deletion markers and needs no custom loader.
+
 ### Secrets retrieval
 
 #### [AWS SSM](https://docs.aws.amazon.com/systems-manager/latest/userguide/integration-ps-secretsmanager.html)

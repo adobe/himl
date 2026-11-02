@@ -22,6 +22,7 @@ from deepmerge import Merger
 from .interpolation import InterpolationResolver, EscapingResolver, InterpolationValidator, SecretResolver, \
     DictIterator, replace_parent_working_directory, EnvVarResolver, collect_pending_keys
 from .python_compat import iteritems, primitive_types, PY3
+from .yaml_tags import DELETE, loader_with_delete_tag
 
 logger = logging.getLogger(__name__)
 
@@ -29,8 +30,40 @@ logger = logging.getLogger(__name__)
 @functools.lru_cache(maxsize=None)
 def _yaml_get_content_cached(yaml_file):
     with open(yaml_file, 'r') as f:
-        content = yaml.load(f, Loader=yaml.SafeLoader)
+        content = yaml.load(f, Loader=loader_with_delete_tag(yaml.SafeLoader))
     return content if content else {}
+
+
+def _reject_delete_markers(value, path):
+    if value is DELETE:
+        location = ".".join(path) or "<root>"
+        raise ValueError("!delete is only supported as a dictionary value at {}".format(location))
+    if isinstance(value, dict):
+        for key, child in iteritems(value):
+            _reject_delete_markers(key, path + ("<key>",))
+            _reject_delete_markers(child, path + (str(key),))
+    elif isinstance(value, (list, tuple, set)):
+        for index, child in enumerate(value):
+            _reject_delete_markers(child, path + (str(index),))
+
+
+def _prepare_deletions(reference, incoming, path=()):
+    if incoming is DELETE:
+        _reject_delete_markers(incoming, path)
+    cleaned = {}
+    for key, value in iteritems(incoming):
+        key_path = path + (str(key),)
+        _reject_delete_markers(key, key_path)
+        if value is DELETE:
+            if isinstance(reference, dict):
+                reference.pop(key, None)
+        elif isinstance(value, dict):
+            inherited = reference.get(key) if isinstance(reference, dict) else None
+            cleaned[key] = _prepare_deletions(inherited, value, key_path)
+        else:
+            _reject_delete_markers(value, key_path)
+            cleaned[key] = value
+    return cleaned
 
 
 class ConfigProcessor(object):
@@ -261,6 +294,7 @@ class ConfigGenerator(object):
 
     @staticmethod
     def merge_yamls(values, yaml_content, type_strategies, fallback_strategies, type_conflict_strategies):
+        yaml_content = _prepare_deletions(values, yaml_content)
         for key, value in iteritems(yaml_content):
             if key in values and not isinstance(values[key], type(value)) and not isinstance(value, type(values[key])):
                 raise Exception("Failed to merge key '{}', because of mismatch in type: {} vs {}"
@@ -353,7 +387,7 @@ class ConfigGenerator(object):
                              self.fallback_strategies, self.type_conflict_strategies)
             self.resolve_simple_interpolations(merged_values, yaml_file)
 
-        if not merged_values:
+        if not precomputed_state and not any(self.hierarchy):
             raise Exception("No YAML files found to process in the hierarchy")
 
         self.generated_data = merged_values
