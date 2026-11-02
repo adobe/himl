@@ -90,8 +90,6 @@ jobs:
   security:
     name: Security checks
     runs-on: ubuntu-latest
-    # Note: Using Python 3.13 for security checks until bandit supports Python 3.14
-    # See: https://github.com/PyCQA/bandit/issues with ast.Num deprecation
     steps:
     - name: Checkout code
       uses: actions/checkout@v7

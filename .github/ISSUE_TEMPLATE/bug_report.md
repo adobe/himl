@@ -29,7 +29,7 @@ A clear and concise description of what actually happened.
 ## Environment
 
 - OS: [e.g. Ubuntu 20.04, macOS 12.0, Windows 10]
-- Python version: [e.g. 3.9.7]
+- Python version: [output of `python --version`]
 - himl version: [e.g. 0.17.0]
 - Installation method: [e.g. pip, conda, from source]
 
