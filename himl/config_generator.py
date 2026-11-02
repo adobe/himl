@@ -30,7 +30,8 @@ logger = logging.getLogger(__name__)
 @functools.lru_cache(maxsize=None)
 def _yaml_get_content_cached(yaml_file):
     with open(yaml_file, 'r') as f:
-        content = yaml.load(f, Loader=loader_with_delete_tag(yaml.SafeLoader))
+        loader = loader_with_delete_tag(yaml.SafeLoader)
+        content = yaml.load(f, Loader=loader)  # nosec B506 # Scoped subclass of SafeLoader
     return content if content else {}
 
 
