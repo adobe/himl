@@ -8,6 +8,7 @@
 # OF ANY KIND, either express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
 
+import copy
 import os
 import tempfile
 import shutil
@@ -19,10 +20,25 @@ from himl.config_merger import (
     Loader, merge_configs, merge_logic, get_leaf_directories,
     get_parser, run, _group_by_parent, merge_logic_batch, build_parent_cache
 )
+from himl.yaml_tags import DELETE
 
 
 class TestLoader:
     """Test custom YAML Loader with include functionality"""
+
+    def test_include_delete_tag(self, tmp_path):
+        included = tmp_path / 'included.yaml'
+        included.write_text('module2: !delete\n')
+        source = tmp_path / 'config.yaml'
+        source.write_text(
+            f'whole: !include {included}\nselected: !include {included} module2\n'
+        )
+
+        with source.open() as stream:
+            result = yaml.load(stream, Loader=Loader)
+
+        assert result['whole'] == {'module2': DELETE}
+        assert result['selected'] is DELETE
 
     def test_loader_initialization(self):
         """Test Loader initialization"""
@@ -75,6 +91,50 @@ full_data: !include {include_file.name}
 
 class TestConfigMergerFunctions:
     """Test config merger utility functions"""
+
+    @pytest.mark.parametrize("parallel", [False, True])
+    @pytest.mark.parametrize("precompute", [False, True])
+    def test_delete_merger_execution_modes(self, tmp_path, monkeypatch, parallel, precompute):
+        from himl import ConfigProcessor
+
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(yaml, 'SafeLoader', yaml.SafeLoader)
+        monkeypatch.setattr('himl.config_merger.cpu_count', lambda: 2)
+        (tmp_path / 'default.yaml').write_text(
+            'modules:\n  module1: keep1\n  module2: inherited\n  module3: keep3\n'
+            'obsolete: "{{missing.key}}"\n'
+        )
+        parent = tmp_path / 'env=dev'
+        parent.mkdir()
+        included = parent / 'deletions.inc'
+        included.write_text('module2: !delete\n')
+        (parent / 'env.yaml').write_text(
+            f'env: dev\nobsolete: !delete\nmodules: !include {included}\n'
+        )
+        leaves = [parent / 'cluster=a', parent / 'cluster=b']
+        for leaf in leaves:
+            leaf.mkdir()
+        (leaves[0] / 'config.yaml').write_text('cluster: a\nmodules:\n  module1: !delete\n  module2: fresh\n')
+        (leaves[1] / 'config.yaml').write_text('cluster: b\nmodules:\n  module3: !delete\n')
+        directories = [str(leaf) for leaf in leaves]
+        cache = build_parent_cache(directories)
+        original_cache = copy.deepcopy(cache)
+        assert cache[str(parent)] == {'env': 'dev', 'modules': {'module1': 'keep1', 'module3': 'keep3'}}
+
+        output = tmp_path / 'output'
+        merge_configs(
+            directories, ['env', 'cluster'], str(output), enable_parallel=parallel,
+            filter_rules=None, allow_unicode=False, enable_precompute=precompute,
+        )
+
+        expected_a = {'env': 'dev', 'cluster': 'a', 'modules': {'module2': 'fresh', 'module3': 'keep3'}}
+        expected_b = {'env': 'dev', 'cluster': 'b', 'modules': {'module1': 'keep1'}}
+        assert yaml.load((output / 'dev' / 'a.yaml').read_text(), Loader=yaml.loader.SafeLoader) == expected_a
+        assert yaml.load((output / 'dev' / 'b.yaml').read_text(), Loader=yaml.loader.SafeLoader) == expected_b
+        processor = ConfigProcessor()
+        processor.process(path=str(leaves[0]), precomputed_state=cache[str(parent)])
+        assert processor.process(path=str(leaves[1]), precomputed_state=cache[str(parent)]) == expected_b
+        assert cache == original_cache
 
     def setup_method(self):
         """Set up test fixtures"""

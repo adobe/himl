@@ -17,6 +17,7 @@ import yaml
 from .config_generator import ConfigProcessor
 from multiprocessing import Pool, cpu_count
 from .filter_rules import FilterRules
+from .yaml_tags import construct_delete
 
 logging.basicConfig()
 logging.root.setLevel(logging.INFO)
@@ -87,6 +88,7 @@ class Loader(yaml.SafeLoader):
 
 # Register the include constructor
 Loader.add_constructor('!include', Loader.include)
+Loader.add_constructor('!delete', construct_delete)
 
 
 def _group_by_parent(directories):
@@ -108,7 +110,7 @@ def build_parent_cache(directories, cwd=None):
     # Patch SafeLoader so !include tags work in yaml_get_content (same patch
     # that merge_logic applies, but build_parent_cache runs before merge_logic).
     Loader.add_constructor('!include', Loader.include)
-    yaml.SafeLoader.add_constructor('!include', Loader.include)
+    yaml.SafeLoader = Loader  # type: ignore
     cwd = cwd or os.getcwd()
     cache = {}
     for leaf_path in directories:
