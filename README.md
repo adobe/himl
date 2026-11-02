@@ -9,6 +9,27 @@ A hierarchical config using yaml in Python.
 
 Latest version is: **0.20.0**
 
+### Unreleased: breaking merge behavior (deepmerge 4)
+
+The upgrade from deepmerge 2.1.0 to 4.0.0 changes the default `append_unique`
+strategy. When a list is merged with an inherited list, repeated incoming values
+are now appended only once. For example, parent `[a]` plus child `[b, b]` produces
+`[a, b]`, previously `[a, b, b]`. This also applies to empty inherited lists,
+nested lists, lists of dictionaries, and precomputed-parent processing.
+Duplicates already in the inherited list remain; lists introduced without an
+inherited value are not deduplicated.
+
+Review generated configuration diffs before upgrading. If repeated incoming
+entries are intentional, use `--list-merge-strategy append` (Python API:
+`type_strategies=[(list, ["append"]), (dict, ["merge"])]`). This retains all
+incoming entries, including those already present in the parent; it does not
+reproduce the old `append_unique` behavior exactly. The `append`, `prepend`, and
+`override` strategies are unchanged.
+
+For Python callers explicitly using `type_conflict_strategies=["override_if_not_empty"]`,
+incoming `0`, `False`, and `0.0` now override inherited values instead of being
+ignored. HIML's default `override` strategy is unaffected.
+
 > **⚠️ Breaking Changes in v0.18.0**
 > This version includes breaking changes:
 > - Default list merge strategy changed from `append` to `append_unique`

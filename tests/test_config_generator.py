@@ -89,6 +89,88 @@ class TestConfigProcessor:
         assert 'feature2' in result['features']
         assert 'feature3' in result['features']
 
+    @pytest.mark.parametrize("precompute", [False, True], ids=["hierarchy", "precomputed-parent"])
+    @pytest.mark.parametrize(
+        "parent, child, expected",
+        [
+            pytest.param(
+                {'features': ['a', 'a']},
+                {'features': ['a', 'b', 'b', 'c', 'b']},
+                {'features': ['a', 'a', 'b', 'c']},
+                id="incoming-duplicates",
+            ),
+            pytest.param(
+                {'features': []},
+                {'features': ['b', 'b']},
+                {'features': ['b']},
+                id="empty-inherited-list",
+            ),
+            pytest.param(
+                {'config': {'features': [{'name': 'a'}]}},
+                {'config': {'features': [{'name': 'b'}, {'name': 'b'}]}},
+                {'config': {'features': [{'name': 'a'}, {'name': 'b'}]}},
+                id="nested-dictionaries",
+            ),
+            pytest.param(
+                {'env': 'default'},
+                {'features': ['b', 'b']},
+                {'env': 'default', 'features': ['b', 'b']},
+                id="new-list-preserves-duplicates",
+            ),
+            pytest.param(
+                {'features': [{1: 'integer', 'name': 'string'}]},
+                {'features': [{'name': 'string', 1: 'integer'}]},
+                {'features': [{1: 'integer', 'name': 'string'}]},
+                id="mixed-dictionary-keys",
+            ),
+        ],
+    )
+    def test_default_list_merge_behavior(self, parent, child, expected, precompute):
+        self.create_test_yaml('default.yaml', parent)
+        self.create_test_yaml('production/env.yaml', child)
+
+        result = self.config_processor.process(
+            cwd=self.temp_dir,
+            path='production',
+            precomputed_state=parent if precompute else None,
+        )
+
+        assert result == expected
+
+    @pytest.mark.parametrize(
+        "strategy, expected",
+        [
+            ('append', ['a', 'b', 'b']),
+            ('prepend', ['b', 'b', 'a']),
+            ('override', ['b', 'b']),
+        ],
+    )
+    def test_alternative_list_merge_strategies_preserve_incoming_duplicates(self, strategy, expected):
+        self.create_test_yaml('default.yaml', {'features': ['a']})
+        self.create_test_yaml('production/env.yaml', {'features': ['b', 'b']})
+
+        result = self.config_processor.process(
+            cwd=self.temp_dir,
+            path='production',
+            type_strategies=[(list, [strategy]), (dict, ["merge"])],
+        )
+
+        assert result['features'] == expected
+
+    @pytest.mark.parametrize("value", [0, False, 0.0], ids=["zero-int", "false", "zero-float"])
+    def test_override_if_not_empty_accepts_falsy_primitives(self, value):
+        self.create_test_yaml('default.yaml', {'config': {'value': 'inherited'}})
+        self.create_test_yaml('production/env.yaml', {'config': {'value': value}})
+
+        result = self.config_processor.process(
+            cwd=self.temp_dir,
+            path='production',
+            type_conflict_strategies=["override_if_not_empty"],
+        )
+
+        assert result['config']['value'] == value
+        assert type(result['config']['value']) is type(value)
+
     def test_config_filtering(self):
         """Test config filtering functionality"""
         config_data = {
