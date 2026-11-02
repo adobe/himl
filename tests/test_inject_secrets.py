@@ -8,6 +8,9 @@
 # OF ANY KIND, either express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
 
+import json
+import subprocess
+
 import pytest
 from unittest.mock import patch
 
@@ -126,6 +129,36 @@ class TestSecretInjector:
                     'secret_key': 'my_key'
                 }
             )
+
+    @patch('subprocess.run')
+    def test_inject_vals_reference_and_cache(self, mock_run):
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=[], returncode=0, stdout='{"value": "resolved-secret\\n"}', stderr="")
+        reference = 'ref+awssecrets://app/db.password?region=us-east-1&version_stage=AWSCURRENT#/password'
+        expression = '{{vals.ref(' + reference + ')}}'
+
+        assert self.injector.inject_secret(expression) == 'resolved-secret\n'
+        assert self.injector.inject_secret(expression) == 'resolved-secret\n'
+        assert mock_run.call_count == 1
+        assert json.loads(mock_run.call_args.kwargs['input']) == {'value': reference}
+
+    @pytest.mark.parametrize("skip_secrets", [False, True])
+    @patch('subprocess.run')
+    def test_vals_config_processing(self, mock_run, yaml_creator, temp_dir, skip_secrets):
+        from himl.config_generator import ConfigProcessor
+
+        expression = '{{vals.ref(ref+echo://password)}}'
+        yaml_creator('config.yaml', {'password': expression, 'plain_ref': 'ref+echo://unchanged'})
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=[], returncode=0, stdout='{"value": "password"}', stderr="")
+
+        result = ConfigProcessor().process(cwd=temp_dir, path='', skip_secrets=skip_secrets)
+
+        assert result == {
+            'password': expression if skip_secrets else 'password',
+            'plain_ref': 'ref+echo://unchanged',
+        }
+        assert mock_run.call_count == (0 if skip_secrets else 1)
 
     def test_inject_secret_unsupported_type(self):
         """Test handling of unsupported secret types"""

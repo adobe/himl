@@ -8,7 +8,10 @@
 # OF ANY KIND, either express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
 
+import json
 import os
+import re
+import subprocess
 import sys
 
 
@@ -104,10 +107,47 @@ class VaultSecretResolver(SecretResolver):
             return vault().get_key(path, key)
 
 
+class ValsSecretResolver(SecretResolver):
+    def supports(self, secret_type):
+        return secret_type == "vals"
+
+    def resolve(self, secret_type, secret_params):
+        reference = secret_params.get("ref")
+        if not isinstance(reference, str) or not re.fullmatch(r"ref\+[A-Za-z0-9_-]+://\S+", reference):
+            raise ValueError("Vals requires a 'ref' parameter containing a ref+PROVIDER://... URI")
+
+        try:
+            result = subprocess.run(
+                ["vals", "eval", "-f", "-", "-o", "json"],
+                input=json.dumps({"value": reference}),
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                timeout=60,
+                check=False,
+            )
+        except FileNotFoundError:
+            raise RuntimeError("Install vals and ensure its executable is available on PATH") from None
+        except subprocess.TimeoutExpired:
+            raise RuntimeError("Vals secret resolution timed out after 60 seconds") from None
+        except OSError:
+            raise RuntimeError("Could not execute vals; check its executable and permissions") from None
+        except UnicodeError:
+            raise RuntimeError("Vals returned an invalid UTF-8 response") from None
+
+        if result.returncode != 0:
+            raise RuntimeError("Vals secret resolution failed with exit code {}".format(result.returncode))
+
+        try:
+            return json.loads(result.stdout)["value"]
+        except (ValueError, KeyError, TypeError):
+            raise RuntimeError("Vals returned an invalid JSON response") from None
+
+
 class AggregatedSecretResolver(SecretResolver):
     def __init__(self, default_aws_profile=None):
         self.secret_resolvers = (SSMSecretResolver(default_aws_profile), S3SecretResolver(default_aws_profile),
-                                 VaultSecretResolver(), SopsSecretResolver())
+                                 VaultSecretResolver(), SopsSecretResolver(), ValsSecretResolver())
 
     def supports(self, secret_type):
         return any([resolver.supports(secret_type) for resolver in self.secret_resolvers])
