@@ -226,15 +226,12 @@ def get_leaf_directories(src, leaf_directories, exit_on_empty=True):
     directories = []
 
     for root, dirs, files in os.walk(src):
+        # skip hidden directories and do not descend into them
+        dirs[:] = [dr for dr in dirs if not dr.startswith('.')]
         for dr in dirs:
-            # if directory is hidden skip
-            if dr.startswith('.') or root.split("/")[1].startswith("."):
-                continue
-            elif is_leaf_directory(dr, leaf_directories):
+            if is_leaf_directory(dr, leaf_directories):
                 directory = root + "/" + dr
                 directories.append(directory)
-            else:
-                continue
 
     if len(directories) == 0 and exit_on_empty:
         sys.exit("No leaf directories found")

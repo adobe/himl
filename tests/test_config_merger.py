@@ -135,6 +135,30 @@ class TestConfigMergerFunctions:
 
         assert len(leaf_dirs) == 0
 
+    @pytest.mark.parametrize('src, leaf', [
+        ('.', 'env=dev/region=us-east-1/cluster=web'),
+        ('env=dev', 'region=us-east-1/cluster=web'),
+    ])
+    def test_get_leaf_directories_relative_path_without_parent(self, src, leaf, monkeypatch):
+        """A relative source path made of a single component must not crash"""
+        self.create_directory_structure()
+        monkeypatch.chdir(self.temp_dir)
+
+        leaf_dirs = get_leaf_directories(src, ['cluster'])
+
+        assert [os.path.normpath(d) for d in leaf_dirs] == [os.path.normpath(os.path.join(src, leaf))]
+
+    def test_get_leaf_directories_skips_hidden_directories(self):
+        """Leaf directories at or below a hidden directory are ignored"""
+        self.create_directory_structure()
+        for hidden in ['.git/cluster=old', '.cache/env=dev/cluster=old', 'env=dev/.snapshots/cluster=old']:
+            os.makedirs(os.path.join(self.temp_dir, hidden), exist_ok=True)
+
+        leaf_dirs = get_leaf_directories(self.temp_dir, ['cluster'])
+
+        expected = os.path.join(self.temp_dir, 'env=dev', 'region=us-east-1', 'cluster=web')
+        assert [os.path.normpath(d) for d in leaf_dirs] == [expected]
+
     @patch('himl.config_merger.ConfigProcessor')
     def test_merge_logic(self, mock_config_processor):
         """Test merge logic function"""
