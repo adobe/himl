@@ -27,8 +27,8 @@ classifiers = [
 ]
 requires-python = ">=3.11"
 dependencies = [
-    "PyYAML==6.0.3",
-    "deepmerge==4.0.0",
+    "PyYAML==6.0.4",
+    "deepmerge==4.0.1",
     "pathlib2==2.3.7.post1",
 ]
 
@@ -42,14 +42,14 @@ dev = [
     "pytest-cov==7.1.0",
     "pytest-mock==3.17.0",
     "pytest-xdist==3.8.0",
-    "coverage[toml]==7.17.0",
+    "coverage[toml]==7.17.5",
     "black==26.10.1",
     "flake8==7.5.0",
     "mypy==2.4.1",
-    "types-PyYAML==6.0.12.20261030",
-    "boto3==1.43.123",
+    "types-PyYAML==6.0.12.20261122",
+    "boto3==1.44.13",
     "hvac==2.4.0",
-    "bump-my-version==1.8.1",
+    "bump-my-version==1.8.4",
     "build==1.6.1",
     "twine==7.0.0",
 ]
